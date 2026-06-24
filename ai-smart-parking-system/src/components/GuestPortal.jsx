@@ -101,9 +101,18 @@ export default function GuestPortal({
     
     if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // We only want to capture the center region (the target box) to improve OCR accuracy.
+    // The target box is 80% width and 40% height of the video container.
+    const cropWidth = video.videoWidth * 0.8;
+    const cropHeight = video.videoHeight * 0.4;
+    const startX = (video.videoWidth - cropWidth) / 2;
+    const startY = (video.videoHeight - cropHeight) / 2;
+
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
+    
+    // Draw only the cropped center region, but scale it up slightly for better OCR resolution
+    ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth * 1.5, cropHeight * 1.5);
     
     try {
       const { data: { text } } = await Tesseract.recognize(
@@ -115,10 +124,17 @@ export default function GuestPortal({
       // Clean OCR output (allow uppercase alphanumeric and dash/space)
       const cleanText = text.replace(/[^A-Z0-9- ]/gi, '').trim().toUpperCase();
       
-      // Basic validation: >= 6 chars, contains both letters and numbers
-      if (cleanText.length >= 6 && /[A-Z]/.test(cleanText) && /[0-9]/.test(cleanText)) {
-        setOcrText(cleanText);
-        setPlateNumber(cleanText);
+      // Strict extraction: find an Indian license plate pattern
+      // Format: State(2 letters) + RTO(1-2 digits) + Series(1-3 letters) + Number(1-4 digits)
+      const plateRegex = /[A-Z]{2}[-\s]*[0-9]{1,2}[-\s]*[A-Z]{1,3}[-\s]*[0-9]{1,4}/;
+      const match = cleanText.match(plateRegex);
+      
+      if (match) {
+        // Only extract the matched plate, completely ignoring background text!
+        const extractedPlate = match[0].trim();
+        
+        setOcrText(extractedPlate);
+        setPlateNumber(extractedPlate);
         setScanSuccess(true);
         stopCamera();
         
@@ -423,14 +439,37 @@ export default function GuestPortal({
                       width: '100%', 
                       height: '100%', 
                       objectFit: 'cover',
-                      display: streamRef.current ? 'block' : 'none'
+                      display: isScanning || scanSuccess ? 'block' : 'none'
                     }} 
                   />
+                  
+                  {/* Targeting Overlay Box */}
+                  {(isScanning || scanSuccess) && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '80%',
+                      height: '40%',
+                      border: '2px solid var(--cyan)',
+                      borderRadius: '8px',
+                      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+                      pointerEvents: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <div style={{ position: 'absolute', top: '-24px', color: 'var(--cyan)', fontSize: '10px', fontWeight: 'bold', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px' }}>
+                        ALIGN PLATE HERE
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Hidden canvas for capturing frames */}
                   <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                  {!streamRef.current && !scanSuccess && (
+                  {!isScanning && !scanSuccess && (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', color: cameraError ? 'var(--danger)' : 'var(--text-muted)', fontSize: '12px', textAlign: 'center', position: 'absolute' }}>
                       {cameraError ? <Warning size={28} /> : <Camera size={28} />}
                       <span>{cameraError ? cameraError : 'Camera Offline'}</span>

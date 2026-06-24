@@ -431,7 +431,7 @@ export default function App() {
       </nav>
 
       {/* Main Content Render */}
-      <main style={{ flex: 1, paddingBottom: '60px' }}>
+      <main className="main-content">
         {view === 'guest' ? (
           /* Guest Area */
           <GuestPortal 
