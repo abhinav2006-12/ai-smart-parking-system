@@ -1,4 +1,20 @@
 import { useState, useEffect } from 'react';
+import { 
+  Tools, 
+  CheckOut, 
+  Car, 
+  EV, 
+  Disabled, 
+  Revenue, 
+  Clock, 
+  Logs, 
+  Dashboard, 
+  Camera, 
+  Logo, 
+  Search, 
+  TrendUp, 
+  TrendDown 
+} from './Icons';
 
 export default function AdminDashboard({ 
   parkings, 
@@ -34,7 +50,7 @@ export default function AdminDashboard({
       "AI CAM 2: Bounding box mapped to EV slot B5",
       "AI OCR: Vehicle classification - SUV (Gray)",
       "SYSTEM: Smart slot allocation optimized for Standard A23",
-      "AI CAM 1: Speed detection verified - 8 mph",
+      "AI CAM 1: Speed detection verified - 12 km/h",
       "AI CAM 2: Scanning exit gate... ready for payment",
       "SYSTEM: Dynamic hourly rate updated",
       "AI CAM 1: Vehicle classification - EV Sedan (Black)"
@@ -90,7 +106,7 @@ export default function AdminDashboard({
       acc[p.slotType] = (acc[p.slotType] || 0) + p.fee;
     }
     return acc;
-  }, { standard: 45, ev: 78, disabled: 12 }); // seed some starting values for visually nice charts
+  }, { standard: 450, ev: 780, disabled: 120 }); // Seeded rupees values for visual layout
 
   const maxRevenue = Math.max(...Object.values(typeRevenue), 1);
   const barHeights = {
@@ -103,24 +119,36 @@ export default function AdminDashboard({
     <div>
       {/* Simulation Banner Controls */}
       <div className="card" style={{ marginBottom: '24px', padding: '16px', borderLeft: '4px solid var(--primary)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <h4 style={{ color: '#fff', fontSize: '15px', fontWeight: 600 }}>🛠️ AI Parking Simulator Console</h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-              Simulate real-time camera events, OCR plate reading, and automatic vehicle check-in/out.
-            </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left' }}>
+            <Tools size={20} style={{ color: 'var(--primary)' }} />
+            <div>
+              <h4 style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 800, marginBottom: '4px', fontFamily: 'var(--font-title)' }}>Smart Parking Simulator Console</h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500 }}>
+                Simulate real-time camera events, OCR plate reading, and automatic vehicle check-in/out.
+              </p>
+            </div>
           </div>
           <div className="sim-controls">
-            <button className="btn btn-sm btn-primary" onClick={onSimulateCheckIn}>
-              🚗 Vehicle Entry (Scan & Park)
+            <button className="btn btn-sm btn-primary" onClick={onSimulateCheckIn} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Car size={14} />
+              <span>Vehicle Entry (Scan & Park)</span>
             </button>
             <button 
               className="btn btn-sm" 
               onClick={onSimulateCheckOut}
               disabled={activeParkingCount === 0}
-              style={{ borderColor: 'var(--warning)', color: '#fbbf24', background: 'rgba(245, 158, 11, 0.05)' }}
+              style={{ 
+                borderColor: 'var(--warning)', 
+                color: '#fbbf24', 
+                background: 'rgba(245, 158, 11, 0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
             >
-              🏁 Vehicle Exit (Checkout & Pay)
+              <CheckOut size={14} />
+              <span>Vehicle Exit (Checkout & Pay)</span>
             </button>
           </div>
         </div>
@@ -129,23 +157,30 @@ export default function AdminDashboard({
       {/* Metrics Row */}
       <div className="metrics-row">
         {/* Metric 1: Active Parking */}
-        <div className="card metric-card">
+        <div className="card metric-card purple">
           <div className="metric-header">
             <span>Active Parking</span>
-            <div className="metric-icon icon-purple">🚗</div>
+            <div className="metric-icon icon-purple">
+              <Car size={16} />
+            </div>
           </div>
           <div className="metric-value">{activeParkingCount}</div>
           <div className="metric-footer">
-            <span className="trend-up">● Live</span>
+            <span className="trend-up" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', backgroundColor: 'var(--success)', borderRadius: '50%' }}></span>
+              <span>Live</span>
+            </span>
             <span style={{ color: 'var(--text-muted)' }}>Occupying space</span>
           </div>
         </div>
 
         {/* Metric 2: Empty Slots */}
-        <div className="card metric-card">
+        <div className="card metric-card cyan">
           <div className="metric-header">
             <span>Empty Slots</span>
-            <div className="metric-icon icon-cyan">🟢</div>
+            <div className="metric-icon icon-cyan">
+              <Logo size={16} />
+            </div>
           </div>
           <div className="metric-value">{emptySlotsCount}</div>
           <div className="metric-footer">
@@ -156,29 +191,39 @@ export default function AdminDashboard({
         </div>
 
         {/* Metric 3: Revenue Today */}
-        <div className="card metric-card">
+        <div className="card metric-card green">
           <div className="metric-header">
             <span>Revenue Today</span>
-            <div className="metric-icon icon-green">💵</div>
+            <div className="metric-icon icon-green">
+              <Revenue size={16} />
+            </div>
           </div>
-          <div className="metric-value">${revenueToday.toFixed(2)}</div>
+          <div className="metric-value">₹{revenueToday.toFixed(0)}</div>
           <div className="metric-footer">
             {revenueToday >= revenueYesterday ? (
-              <span className="trend-up">▲ +{((revenueToday - revenueYesterday) / Math.max(revenueYesterday, 1) * 100).toFixed(0)}%</span>
+              <span className="trend-up" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                <TrendUp size={12} />
+                <span>+{revenueYesterday > 0 ? ((revenueToday - revenueYesterday) / revenueYesterday * 100).toFixed(0) : 100}%</span>
+              </span>
             ) : (
-              <span className="trend-down">▼ -{((revenueYesterday - revenueToday) / Math.max(revenueYesterday, 1) * 100).toFixed(0)}%</span>
+              <span className="trend-down" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                <TrendDown size={12} />
+                <span>-{((revenueYesterday - revenueToday) / revenueYesterday * 100).toFixed(0)}%</span>
+              </span>
             )}
             <span style={{ color: 'var(--text-muted)' }}>vs yesterday</span>
           </div>
         </div>
 
         {/* Metric 4: Revenue Yesterday */}
-        <div className="card metric-card">
+        <div className="card metric-card yellow">
           <div className="metric-header">
             <span>Revenue Yesterday</span>
-            <div className="metric-icon icon-yellow">🗓️</div>
+            <div className="metric-icon icon-yellow">
+              <Clock size={16} />
+            </div>
           </div>
-          <div className="metric-value">${revenueYesterday.toFixed(2)}</div>
+          <div className="metric-value">₹{revenueYesterday.toFixed(0)}</div>
           <div className="metric-footer">
             <span className="trend-neutral">Stable</span>
             <span style={{ color: 'var(--text-muted)' }}>Calculated daily</span>
@@ -186,10 +231,12 @@ export default function AdminDashboard({
         </div>
 
         {/* Metric 5: Total Logs */}
-        <div className="card metric-card">
+        <div className="card metric-card red">
           <div className="metric-header">
             <span>Total Vehicles Today</span>
-            <div className="metric-icon icon-red">📈</div>
+            <div className="metric-icon icon-red">
+              <Logs size={16} />
+            </div>
           </div>
           <div className="metric-value">{totalVehiclesCount}</div>
           <div className="metric-footer">
@@ -206,7 +253,8 @@ export default function AdminDashboard({
           {/* Chart Card */}
           <div className="card">
             <div className="section-title">
-              <span>📊 AI Analytics: Occupancy Trend & Revenue</span>
+              <Dashboard size={18} style={{ color: 'var(--primary)' }} />
+              <span>Analytics: Occupancy Trend & Revenue</span>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '24px' }}>
@@ -215,7 +263,7 @@ export default function AdminDashboard({
                 <h5 style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', textAlign: 'left' }}>
                   24h Occupancy Curve (% Spaces filled)
                 </h5>
-                <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: '8px', padding: '10px' }}>
+                <div style={{ background: 'var(--bg-secondary)', borderRadius: '12px', padding: '10px', boxShadow: 'var(--clay-shadow-inset)' }}>
                   <svg className="svg-chart" viewBox="0 0 560 220">
                     <defs>
                       <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -283,14 +331,14 @@ export default function AdminDashboard({
               {/* Revenue Distribution Chart */}
               <div>
                 <h5 style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', textAlign: 'left' }}>
-                  Revenue distribution by slot type ($)
+                  Revenue distribution by slot type (₹)
                 </h5>
-                <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: '8px', padding: '10px', height: '220px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div style={{ background: 'var(--bg-secondary)', borderRadius: '12px', padding: '10px', height: '220px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: 'var(--clay-shadow-inset)' }}>
                   <div style={{ display: 'flex', height: '160px', alignItems: 'flex-end', justifyContent: 'space-around', paddingBottom: '10px' }}>
                     {/* Standard bar */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '30%' }}>
                       <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: 'bold', marginBottom: '4px' }}>
-                        ${typeRevenue.standard.toFixed(0)}
+                        ₹{typeRevenue.standard.toFixed(0)}
                       </span>
                       <div style={{ 
                         height: `${barHeights.standard}px`, 
@@ -305,7 +353,7 @@ export default function AdminDashboard({
                     {/* EV Bar */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '30%' }}>
                       <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: 'bold', marginBottom: '4px' }}>
-                        ${typeRevenue.ev.toFixed(0)}
+                        ₹{typeRevenue.ev.toFixed(0)}
                       </span>
                       <div style={{ 
                         height: `${barHeights.ev}px`, 
@@ -314,13 +362,13 @@ export default function AdminDashboard({
                         borderRadius: '4px 4px 0 0',
                         boxShadow: '0 0 10px rgba(6, 182, 212, 0.2)'
                       }} />
-                      <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '8px' }}>EV Charging</span>
+                      <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '8px' }}>EV Bay</span>
                     </div>
 
                     {/* Disabled Bar */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '30%' }}>
                       <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: 'bold', marginBottom: '4px' }}>
-                        ${typeRevenue.disabled.toFixed(0)}
+                        ₹{typeRevenue.disabled.toFixed(0)}
                       </span>
                       <div style={{ 
                         height: `${barHeights.disabled}px`, 
@@ -340,7 +388,7 @@ export default function AdminDashboard({
             </div>
 
             {/* Custom chart tooltip rendering */}
-            {hoveredSlot && (
+            {hoveredSlot && hoveredSlot.x && (
               <div className="chart-tooltip" style={{ left: `${hoveredSlot.x + 20}px`, top: `${hoveredSlot.y - 10}px` }}>
                 <strong style={{ display: 'block' }}>{hoveredSlot.title}</strong>
                 <span>{hoveredSlot.desc}</span>
@@ -351,7 +399,8 @@ export default function AdminDashboard({
           {/* AI CCTV camera monitoring panel */}
           <div className="card">
             <div className="section-title">
-              <span>📹 CCTV AI Scanner Feed</span>
+              <Camera size={18} style={{ color: 'var(--primary)' }} />
+              <span>CCTV AI Scanner Feed</span>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
                 <button 
                   onClick={() => setActiveCam(1)} 
@@ -393,9 +442,17 @@ export default function AdminDashboard({
                       <div className="ai-det-box" style={{ width: '120px', height: '60px', top: '25px', left: '50px' }}>
                         <span className="ai-det-label">PLATE: OCR_SCANNING_CONF_99%</span>
                       </div>
-                      <span style={{ fontSize: '48px' }}>🚗</span>
+                      
+                      {/* Stylized Vector Car representation instead of emoji */}
+                      <svg width="64" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" strokeWidth="1.5" style={{ opacity: 0.85 }}>
+                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9C2.1 11.1 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
+                        <circle cx="7" cy="17" r="2" />
+                        <path d="M9 17h6" />
+                        <circle cx="17" cy="17" r="2" />
+                      </svg>
+                      
                       <span style={{ fontSize: '10px', color: 'var(--cyan)', fontFamily: 'monospace', letterSpacing: '1px', marginTop: '4px' }}>
-                        TRACKING_ID: #VEH_9041
+                        TRACKING_ID: #IND_9041
                       </span>
                     </div>
                   </div>
@@ -407,16 +464,25 @@ export default function AdminDashboard({
                         <div className="ai-det-box" style={{ width: '80px', height: '80px', top: '10px', left: '10px', borderColor: 'var(--success)' }}>
                           <span className="ai-det-label" style={{ background: 'var(--success)' }}>SLOT B1: FREE</span>
                         </div>
-                        <span style={{ fontSize: '32px', opacity: 0.15 }}>🚗</span>
-                        <div style={{ fontSize: '9px', color: 'var(--success-hover)', fontFamily: 'monospace' }}>EV B1</div>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" style={{ opacity: 0.2 }}>
+                          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9C2.1 11.1 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
+                        </svg>
+                        <div style={{ fontSize: '9px', color: 'var(--success-hover)', fontFamily: 'monospace', marginTop: '4px' }}>EV B1</div>
                       </div>
 
                       <div style={{ textAlign: 'center', position: 'relative' }}>
                         <div className="ai-det-box" style={{ width: '80px', height: '80px', top: '10px', left: '10px', borderColor: 'var(--danger)' }}>
-                          <span className="ai-det-label" style={{ background: 'var(--danger)' }}>SLOT B2: CHARGING</span>
+                          <span className="ai-det-label" style={{ background: 'var(--danger)' }}>SLOT B2: CHARGE</span>
                         </div>
-                        <span style={{ fontSize: '32px' }}>⚡🚗</span>
-                        <div style={{ fontSize: '9px', color: '#f87171', fontFamily: 'monospace' }}>EV B2</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" strokeWidth="1.5">
+                            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9C2.1 11.1 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
+                          </svg>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--cyan)" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 2v4l-3 4h4v5l4-6h-4z" />
+                          </svg>
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#f87171', fontFamily: 'monospace', marginTop: '4px' }}>EV B2</div>
                       </div>
                     </div>
                   </div>
@@ -429,21 +495,21 @@ export default function AdminDashboard({
 
               {/* Right Column: AI Terminal Logs */}
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <h5 style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', textAlign: 'left' }}>
+                <h5 style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', textAlign: 'left', fontWeight: 700 }}>
                   🧠 AI OCR Inference Stream
                 </h5>
                 <div style={{
                   flex: 1,
-                  background: '#040407',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-sm)',
+                  background: '#1a1028',
+                  borderRadius: '12px',
                   padding: '12px',
                   fontFamily: 'monospace',
                   fontSize: '11px',
                   textAlign: 'left',
-                  color: 'var(--cyan-hover)',
+                  color: '#a5f3fc',
                   overflowY: 'auto',
-                  maxHeight: '190px'
+                  maxHeight: '190px',
+                  boxShadow: 'inset 0 3px 8px rgba(0,0,0,0.4)'
                 }}>
                   {cctvLogs.map((log, index) => (
                     <div key={index} style={{ marginBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '4px', opacity: index === 0 ? 1 : 1 - (index * 0.12) }}>
@@ -457,19 +523,28 @@ export default function AdminDashboard({
         </div>
 
         {/* Right Side: Slot Map */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', position: 'sticky', top: '90px' }}>
           <div className="section-title">
-            <span>📍 Parking Lot Space Map</span>
+            <Logo size={18} style={{ color: 'var(--primary)' }} />
+            <span>Parking Lot Space Map</span>
             <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-secondary)' }}>
               ({activeParkingCount}/60 Occupied)
             </span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '16px', fontSize: '10px', background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px' }}>
-            <span style={{ color: 'var(--success-hover)' }}>● Empty</span>
-            <span style={{ color: '#f87171' }}>● Occupied</span>
-            <span style={{ color: 'var(--cyan-hover)' }}>⚡ EV Bay</span>
-            <span style={{ color: '#60a5fa' }}>♿ Disabled</span>
+          <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', marginBottom: '14px', fontSize: '11px', background: 'var(--bg-secondary)', padding: '10px 8px', borderRadius: '12px', boxShadow: 'var(--clay-shadow-inset)', gap: '8px' }}>
+            <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '8px', height: '8px', backgroundColor: 'var(--success)', borderRadius: '50%' }}></span> Empty
+            </span>
+            <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '8px', height: '8px', backgroundColor: 'var(--danger)', borderRadius: '50%' }}></span> Occupied
+            </span>
+            <span style={{ color: 'var(--cyan-hover)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <EV size={10} /> EV Bay
+            </span>
+            <span style={{ color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Disabled size={10} /> Disabled
+            </span>
           </div>
 
           <div className="slot-map">
@@ -497,8 +572,8 @@ export default function AdminDashboard({
                 >
                   <span>{slot.id}</span>
                   
-                  {slot.type === 'ev' && <span className="slot-badge ev">⚡</span>}
-                  {slot.type === 'disabled' && <span className="slot-badge disabled">♿</span>}
+                  {slot.type === 'ev' && <span className="slot-badge ev"><EV size={8} /></span>}
+                  {slot.type === 'disabled' && <span className="slot-badge disabled"><Disabled size={8} /></span>}
                   
                   {isOccupied && activeParking && (
                     <span className="slot-plate">{activeParking.plateNumber}</span>
@@ -530,14 +605,14 @@ export default function AdminDashboard({
 
           {/* Quick slot inspector footer */}
           <div style={{
-            marginTop: '16px',
-            padding: '12px',
-            background: 'rgba(255,255,255,0.02)',
-            borderRadius: '8px',
-            border: '1px solid var(--border-color)',
-            fontSize: '11px',
+            marginTop: '14px',
+            padding: '14px',
+            background: 'var(--bg-secondary)',
+            borderRadius: '14px',
+            fontSize: '12px',
             textAlign: 'left',
-            minHeight: '62px'
+            minHeight: '62px',
+            boxShadow: 'var(--clay-shadow-inset)'
           }}>
             {hoveredSlot && hoveredSlot.id ? (
               <div>
@@ -548,19 +623,20 @@ export default function AdminDashboard({
                   </span>
                 </div>
                 {hoveredSlot.occupied && hoveredSlot.vehicle && (
-                  <div style={{ marginTop: '4px', color: 'var(--text-secondary)' }}>
-                    Plate: <strong style={{ color: '#fff' }}>{hoveredSlot.vehicle}</strong> | In since: {hoveredSlot.time}
+                  <div style={{ marginTop: '6px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '12px' }}>
+                    Plate: <strong style={{ color: 'var(--text-primary)' }}>{hoveredSlot.vehicle}</strong> | In since: {hoveredSlot.time}
                   </div>
                 )}
                 {!hoveredSlot.occupied && (
                   <div style={{ marginTop: '4px', color: 'var(--text-muted)' }}>
-                    Rate: {hoveredSlot.type === 'ev' ? '$6.00/hr (Inc. Charging)' : hoveredSlot.type === 'disabled' ? '$2.00/hr' : '$4.00/hr'}
+                    Rate: {hoveredSlot.type === 'ev' ? '₹60.00/hr (Inc. Charging)' : hoveredSlot.type === 'disabled' ? '₹20.00/hr' : '₹40.00/hr'}
                   </div>
                 )}
               </div>
             ) : (
-              <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'center' }}>
-                🔍 Hover over a slot for details or click occupied to release
+              <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'center', gap: '6px' }}>
+                <Search size={12} />
+                <span>Hover over a slot for details or click occupied to release</span>
               </div>
             )}
           </div>

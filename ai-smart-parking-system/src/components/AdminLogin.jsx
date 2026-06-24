@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Lock, Warning } from './Icons';
 
 export default function AdminLogin({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -46,12 +47,11 @@ export default function AdminLogin({ onLoginSuccess }) {
             borderRadius: '14px',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '28px',
             color: '#fff',
             marginBottom: '16px',
             boxShadow: '0 0 20px var(--primary-glow)'
           }}>
-            🔒
+            <Lock size={28} />
           </div>
           <h2 style={{ fontFamily: 'var(--font-title)', fontWeight: 700, color: '#fff', fontSize: '24px' }}>
             Admin Portal Access
@@ -63,16 +63,20 @@ export default function AdminLogin({ onLoginSuccess }) {
 
         {error && (
           <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
             background: 'rgba(239, 68, 68, 0.1)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
             borderRadius: 'var(--radius-sm)',
             padding: '12px',
             color: '#f87171',
             fontSize: '13px',
-            marginBottom: '20px',
-            textAlign: 'center'
+            marginBottom: '20px'
           }}>
-            ⚠️ {error}
+            <Warning size={16} />
+            <span>{error}</span>
           </div>
         )}
 
@@ -90,7 +94,7 @@ export default function AdminLogin({ onLoginSuccess }) {
             />
           </div>
 
-          <div className="form-group" style={{ marginBottom: '28px' }}>
+          <div style={{ marginBottom: '28px' }}>
             <label className="form-label">Password</label>
             <input
               type="password"
@@ -112,8 +116,8 @@ export default function AdminLogin({ onLoginSuccess }) {
           </button>
         </form>
 
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
-          Tip: Use <code style={{ fontSize: '11px', padding: '2px 6px' }}>admin</code> / <code style={{ fontSize: '11px', padding: '2px 6px' }}>admin</code> to log in.
+        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
+          Tip: Use username admin and password admin to log in.
         </div>
       </div>
     </div>

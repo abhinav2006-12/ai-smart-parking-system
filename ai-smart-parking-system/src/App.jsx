@@ -3,6 +3,7 @@ import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
 import VehicleList from './components/VehicleList';
 import GuestPortal from './components/GuestPortal';
+import { Logo, Guest, Admin, Dashboard, Logs } from './components/Icons';
 
 // Seed initial dataset if storage is empty
 const INITIAL_SLOTS = [];
@@ -27,94 +28,94 @@ YESTERDAY.setDate(YESTERDAY.getDate() - 1);
 const TODAY = new Date();
 
 const INITIAL_LOGS = [
-  // Exited yesterday (adds to yesterday's revenue)
+  // Exited yesterday (adds to yesterday's revenue in INR)
   {
     id: 'log-1',
-    plateNumber: 'NY-VIP-99',
+    plateNumber: 'DL-3C-AB-1234',
     slotId: 'A12',
     slotType: 'standard',
     entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 9, 30).toISOString(),
     exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 13, 0).toISOString(),
-    fee: 14.00, // 3.5 hrs * $4
+    fee: 140.00, // 3.5 hrs * ₹40
     status: 'completed'
   },
   {
     id: 'log-2',
-    plateNumber: 'CA-CHARGE-5',
+    plateNumber: 'MH-12-CD-5678',
     slotId: 'B3',
     slotType: 'ev',
     entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 8, 0).toISOString(),
     exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 12, 30).toISOString(),
-    fee: 27.00, // 4.5 hrs * $6
+    fee: 270.00, // 4.5 hrs * ₹60
     status: 'completed'
   },
   {
     id: 'log-3',
-    plateNumber: 'TX-DIS-02',
+    plateNumber: 'KL-07-XY-9999',
     slotId: 'C1',
     slotType: 'disabled',
     entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 14, 15).toISOString(),
     exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 16, 45).toISOString(),
-    fee: 6.00, // 3 hrs (rounded up) * $2
+    fee: 60.00, // 3 hrs * ₹20
     status: 'completed'
   },
   {
     id: 'log-4',
-    plateNumber: 'FL-PLATE-44',
+    plateNumber: 'KA-03-AA-1111',
     slotId: 'A15',
     slotType: 'standard',
     entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 10, 0).toISOString(),
     exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 18, 0).toISOString(),
-    fee: 32.00, // 8 hrs * $4
+    fee: 320.00, // 8 hrs * ₹40
     status: 'completed'
   },
   {
     id: 'log-5',
-    plateNumber: 'WA-ECO-88',
+    plateNumber: 'HR-26-BC-7890',
     slotId: 'B7',
     slotType: 'ev',
     entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 16, 0).toISOString(),
     exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 19, 0).toISOString(),
-    fee: 18.00, // 3 hrs * $6
+    fee: 180.00, // 3 hrs * ₹60
     status: 'completed'
   },
 
-  // Exited today (adds to today's revenue)
+  // Exited today (adds to today's revenue in INR)
   {
     id: 'log-6',
-    plateNumber: 'VIP-BOSS-1',
+    plateNumber: 'UP-16-BD-8800',
     slotId: 'A20',
     slotType: 'standard',
     entryTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 7, 0).toISOString(),
     exitTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 11, 0).toISOString(),
-    fee: 16.00, // 4 hrs * $4
+    fee: 160.00, // 4 hrs * ₹40
     status: 'completed'
   },
   {
     id: 'log-7',
-    plateNumber: 'EV-TESLA-9',
+    plateNumber: 'MH-02-EE-3344',
     slotId: 'B1',
     slotType: 'ev',
     entryTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 8, 30).toISOString(),
     exitTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 12, 0).toISOString(),
-    fee: 21.00, // 3.5 hrs * $6
+    fee: 210.00, // 3.5 hrs * ₹60
     status: 'completed'
   },
   {
     id: 'log-8',
-    plateNumber: 'AZ-BLUE-3',
+    plateNumber: 'DL-01-A-1002',
     slotId: 'A25',
     slotType: 'standard',
     entryTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 10, 15).toISOString(),
     exitTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 12, 45).toISOString(),
-    fee: 12.00, // 3 hrs * $4
+    fee: 120.00, // 3 hrs * ₹40
     status: 'completed'
   },
 
   // Active Parking logs (still parked)
   {
     id: 'log-9',
-    plateNumber: 'AI-OCR-404',
+    plateNumber: 'MH-14-AA-1212',
     slotId: 'A5',
     slotType: 'standard',
     entryTime: new Date(TODAY.getTime() - 2.5 * 60 * 60 * 1000).toISOString(), // 2.5 hours ago
@@ -124,7 +125,7 @@ const INITIAL_LOGS = [
   },
   {
     id: 'log-10',
-    plateNumber: 'EV-HYUNDAI-2',
+    plateNumber: 'KA-51-MM-0099',
     slotId: 'B2',
     slotType: 'ev',
     entryTime: new Date(TODAY.getTime() - 1.2 * 60 * 60 * 1000).toISOString(), // 1.2 hours ago
@@ -134,7 +135,7 @@ const INITIAL_LOGS = [
   },
   {
     id: 'log-11',
-    plateNumber: 'HELP-WHEEL-1',
+    plateNumber: 'KL-01-CB-4545',
     slotId: 'C5',
     slotType: 'disabled',
     entryTime: new Date(TODAY.getTime() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
@@ -144,7 +145,7 @@ const INITIAL_LOGS = [
   },
   {
     id: 'log-12',
-    plateNumber: 'NY-FAST-100',
+    plateNumber: 'DL-4C-K-3000',
     slotId: 'A10',
     slotType: 'standard',
     entryTime: new Date(TODAY.getTime() - 0.5 * 60 * 60 * 1000).toISOString(), // 30 mins ago
@@ -154,7 +155,7 @@ const INITIAL_LOGS = [
   },
   {
     id: 'log-13',
-    plateNumber: 'VIP-GUEST-7',
+    plateNumber: 'HR-51-Q-6677',
     slotId: 'A36',
     slotType: 'standard',
     entryTime: new Date(TODAY.getTime() - 5.8 * 60 * 60 * 1000).toISOString(), // 5.8 hours ago
@@ -318,15 +319,17 @@ export default function App() {
     return { success: true };
   };
 
-  // Admin Console Simulator: Generate random car entry
+  // Admin Console Simulator: Generate random Indian car entry
   const handleSimulateCheckIn = () => {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const randomPlate = 
-      letters[Math.floor(Math.random() * 26)] + 
-      letters[Math.floor(Math.random() * 26)] + '-' + 
-      Math.floor(100 + Math.random() * 900) + '-' + 
-      letters[Math.floor(Math.random() * 26)] + 
-      letters[Math.floor(Math.random() * 26)];
+    const states = ['DL', 'MH', 'KA', 'KL', 'HR', 'UP', 'GJ', 'TN', 'AP', 'TS'];
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    
+    const randomState = states[Math.floor(Math.random() * states.length)];
+    const randomCode = Math.floor(1 + Math.random() * 14).toString().padStart(2, '0');
+    const randomLetters = alphabet[Math.floor(Math.random() * 26)] + alphabet[Math.floor(Math.random() * 26)];
+    const randomDigits = Math.floor(1000 + Math.random() * 9000);
+    
+    const randomPlate = `${randomState}-${randomCode}-${randomLetters}-${randomDigits}`;
 
     const types = ['standard', 'standard', 'standard', 'ev', 'disabled'];
     const randomType = types[Math.floor(Math.random() * types.length)];
@@ -352,7 +355,7 @@ export default function App() {
 
     // Simulate 1 to 6 hours parked
     const hours = Math.floor(1 + Math.random() * 5);
-    const rate = activeSession.slotType === 'ev' ? 6 : activeSession.slotType === 'disabled' ? 2 : 4;
+    const rate = activeSession.slotType === 'ev' ? 60 : activeSession.slotType === 'disabled' ? 20 : 40;
     const computedFee = hours * rate;
 
     // Mock check-out success
@@ -369,10 +372,12 @@ export default function App() {
       {/* Navigation Header */}
       <nav className="navbar">
         <div className="brand">
-          <div className="brand-logo">🅿️</div>
+          <div className="brand-logo" style={{ background: 'linear-gradient(135deg, #16a34a, #f97316)' }}>
+            <Logo size={24} />
+          </div>
           <div>
-            <span className="brand-name">Antigravity Smart Parking</span>
-            <div style={{ fontSize: '9px', color: 'var(--cyan-hover)', fontFamily: 'monospace', letterSpacing: '1px' }}>
+            <span className="brand-name">Smart Parking</span>
+            <div style={{ fontSize: '9px', color: 'var(--cyan-hover)', fontFamily: 'monospace', letterSpacing: '1.5px' }}>
               WEEK_1_CORE_AI_ON
             </div>
           </div>
@@ -383,18 +388,24 @@ export default function App() {
           <button 
             className={`btn ${view === 'guest' ? 'btn-active' : ''}`}
             onClick={() => setView('guest')}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            👤 Guest Portal
+            <Guest size={16} />
+            <span>Guest Portal</span>
           </button>
 
           <button 
             className={`btn ${view === 'admin' ? 'btn-active' : ''}`}
             onClick={() => setView('admin')}
             style={{
-              borderColor: view === 'admin' ? 'var(--primary)' : ''
+              borderColor: view === 'admin' ? 'var(--primary)' : '',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}
           >
-            ⚙️ Admin Panel
+            <Admin size={16} />
+            <span>Admin Panel</span>
           </button>
 
           <span style={{ margin: '0 8px', width: '1px', height: '24px', background: 'var(--border-color)' }}></span>
@@ -420,7 +431,7 @@ export default function App() {
       </nav>
 
       {/* Main Content Render */}
-      <main style={{ flex: 1, paddingBottom: '40px' }}>
+      <main style={{ flex: 1, paddingBottom: '60px' }}>
         {view === 'guest' ? (
           /* Guest Area */
           <GuestPortal 
@@ -436,20 +447,22 @@ export default function App() {
           ) : (
             <div>
               {/* Admin Inner Menu */}
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '28px', flexWrap: 'wrap' }}>
                 <button 
                   className={`btn ${adminSubView === 'dashboard' ? 'btn-primary' : ''}`}
                   onClick={() => setAdminSubView('dashboard')}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  📈 Core Dashboard
+                  <Dashboard size={16} />
+                  <span>Core Dashboard</span>
                 </button>
                 <button 
                   className={`btn ${adminSubView === 'vehicles' ? 'btn-primary' : ''}`}
                   onClick={() => setAdminSubView('vehicles')}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  📋 Vehicle Directory
+                  <Logs size={16} />
+                  <span>Vehicle Directory</span>
                 </button>
               </div>
 
@@ -477,7 +490,7 @@ export default function App() {
       {/* Footer */}
       <footer className="footer">
         <div>
-          © 2026 Antigravity AI Smart Parking Systems. All rights reserved.
+          © 2026 Smart Parking Systems. All rights reserved.
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <a href="#" className="link-hover" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Privacy Policy</a>

@@ -1,13 +1,25 @@
 import { useState, useEffect } from 'react';
+import { 
+  CheckIn, 
+  CheckOut, 
+  Car, 
+  EV, 
+  Disabled, 
+  Camera, 
+  Ticket, 
+  Check, 
+  Warning, 
+  Clock 
+} from './Icons';
 
-// List of mock vehicles for the AI scanning simulation
+// List of mock vehicles for the Indian AI scanning simulation
 const MOCK_SCANNED_CARS = [
-  { plate: 'AI-PRK-01', style: 'SUV', color: 'Midnight Gray' },
-  { plate: 'VIP-77-CAR', style: 'Sedan', color: 'Sunset Gold' },
-  { plate: 'TEXAS-99X', style: 'Coupe', color: 'Carbon Black' },
-  { plate: 'NY-SMART-8', style: 'Hatchback', color: 'Cyber Lime' },
-  { plate: 'CALI-EV-77', style: 'Tesla S', color: 'Solid White' },
-  { plate: 'LON-PARK-5', style: 'Convertible', color: 'Cherry Red' }
+  { plate: 'DL-01-CA-1234', style: 'Sedan', color: 'Midnight Silver' },
+  { plate: 'MH-12-DE-7777', style: 'SUV', color: 'Sunset Gold' },
+  { plate: 'KL-07-XY-9999', style: 'Hatchback', color: 'Cyber Green' },
+  { plate: 'KA-03-AB-1111', style: 'SUV', color: 'Solid White' },
+  { plate: 'HR-26-BC-7890', style: 'Luxury Sedan', color: 'Carbon Black' },
+  { plate: 'UP-16-AA-5678', style: 'Compact SUV', color: 'Cherry Red' }
 ];
 
 export default function GuestPortal({ 
@@ -79,7 +91,7 @@ export default function GuestPortal({
     const randomCar = MOCK_SCANNED_CARS[Math.floor(Math.random() * MOCK_SCANNED_CARS.length)];
     setScannedCar(randomCar);
     setIsScanning(true);
-    setOcrText('--------');
+    setOcrText('--------------');
   };
 
   // Submit Check-In
@@ -136,7 +148,7 @@ export default function GuestPortal({
   // Live calculation of fees based on simulated hours
   const calculateFees = () => {
     if (!checkoutSession) return 0;
-    const rate = checkoutSession.slotType === 'ev' ? 6 : checkoutSession.slotType === 'disabled' ? 2 : 4;
+    const rate = checkoutSession.slotType === 'ev' ? 60 : checkoutSession.slotType === 'disabled' ? 20 : 40;
     return simulatedDurationHours * rate;
   };
 
@@ -164,30 +176,25 @@ export default function GuestPortal({
     }
   };
 
-  // Custom QR Code SVG generator
+  // Custom QR Code SVG generator (Indian BHIM / UPI simulation look)
   const renderQRCode = (plate, amount) => {
-    // Generates a mock but beautiful QR pattern by rendering SVG rectangle nodes dynamically
     const blocks = [];
-    const size = 21; // 21x21 grid
+    const size = 21;
     
-    // Seeded random function based on plate string length
     let seed = plate.charCodeAt(0) || 42;
     const random = () => {
       const x = Math.sin(seed++) * 10000;
       return x - Math.floor(x);
     };
 
-    // Draw grid
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        // Corners: standard QR alignment targets
         const isCorner = 
-          (r < 7 && c < 7) || // top-left
-          (r < 7 && c >= size - 7) || // top-right
-          (r >= size - 7 && c < 7); // bottom-left
+          (r < 7 && c < 7) || 
+          (r < 7 && c >= size - 7) || 
+          (r >= size - 7 && c < 7);
           
         if (isCorner) {
-          // outer border
           const isBorder = r === 0 || r === 6 || c === 0 || c === 6 || 
                            (r === 0 && c >= size - 7) || (r === 6 && c >= size - 7) || 
                            (c === size - 7 && r < 7) || (c === size - 1 && r < 7) ||
@@ -199,12 +206,11 @@ export default function GuestPortal({
                           (r >= size - 5 && r <= size - 3 && c >= 2 && c <= 4);
                           
           if (isBorder || isInner) {
-            blocks.push(<rect key={`${r}-${c}`} x={c * 8} y={r * 8} width="8" height="8" fill="#1e1b4b" />);
+            blocks.push(<rect key={`${r}-${c}`} x={c * 8} y={r * 8} width="8" height="8" fill="#0f172a" />);
           }
         } else {
-          // Random QR payload fill
           if (random() > 0.45) {
-            blocks.push(<rect key={`${r}-${c}`} x={c * 8} y={r * 8} width="8" height="8" fill="#1e1b4b" />);
+            blocks.push(<rect key={`${r}-${c}`} x={c * 8} y={r * 8} width="8" height="8" fill="#0f172a" />);
           }
         }
       }
@@ -212,14 +218,12 @@ export default function GuestPortal({
 
     return (
       <svg viewBox="0 0 168 168" className="qr-svg">
-        {/* Background */}
         <rect width="168" height="168" fill="#ffffff" rx="4" />
         <g transform="translate(0, 0)">
           {blocks}
         </g>
-        {/* Accent central logo */}
-        <rect x="72" y="72" width="24" height="24" rx="4" fill="var(--primary)" />
-        <text x="84" y="87" fill="#ffffff" fontSize="10" fontWeight="bold" textAnchor="middle" fontFamily="monospace">P</text>
+        <rect x="68" y="68" width="32" height="32" rx="4" fill="var(--primary)" />
+        <text x="84" y="87" fill="#ffffff" fontSize="9" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif">UPI</text>
       </svg>
     );
   };
@@ -231,25 +235,30 @@ export default function GuestPortal({
         <div 
           className={`tab-item ${activeTab === 'checkin' ? 'active' : ''}`}
           onClick={() => { setActiveTab('checkin'); setTicketPrintout(null); }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
         >
-          🔑 Check-In Vehicle
+          <CheckIn size={18} />
+          <span>Check-In Vehicle</span>
         </div>
         <div 
           className={`tab-item ${activeTab === 'checkout' ? 'active' : ''}`}
           onClick={() => { setActiveTab('checkout'); setCheckoutError(''); setCheckoutSession(null); }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
         >
-          💳 Check-Out & Pay
+          <CheckOut size={18} />
+          <span>Check-Out & Pay</span>
         </div>
       </div>
 
       {/* Guest View Check-In */}
       {activeTab === 'checkin' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', alignItems: 'start' }}>
           
           {/* Checkin form card */}
           <div className="card">
             <div className="section-title">
-              <span>🚗 Guest Check-In Ticket</span>
+              <Car size={18} style={{ color: 'var(--primary)' }} />
+              <span>Guest Check-In Ticket</span>
             </div>
             
             <form onSubmit={handleCheckInSubmit}>
@@ -258,7 +267,7 @@ export default function GuestPortal({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="e.g. AI-PARK-99"
+                  placeholder="e.g. DL-01-CA-1234"
                   style={{ textTransform: 'uppercase', fontSize: '18px', fontWeight: '700', fontFamily: 'var(--font-title)' }}
                   value={plateNumber}
                   onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
@@ -273,25 +282,51 @@ export default function GuestPortal({
                     type="button"
                     className={`btn ${slotType === 'standard' ? 'btn-active' : ''}`}
                     onClick={() => setSlotType('standard')}
-                    style={{ flex: 1, padding: '12px 6px', fontSize: '12px' }}
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      gap: '4px',
+                      padding: '12px 6px', 
+                      fontSize: '12px' 
+                    }}
                   >
-                    🚗 Standard<br/>$4.00/hr
+                    <Car size={16} />
+                    <span>Standard<br/>₹40/hr</span>
                   </button>
                   <button
                     type="button"
                     className={`btn ${slotType === 'ev' ? 'btn-active' : ''}`}
                     onClick={() => setSlotType('ev')}
-                    style={{ flex: 1, padding: '12px 6px', fontSize: '12px', borderColor: slotType === 'ev' ? 'var(--cyan)' : '' }}
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      gap: '4px',
+                      padding: '12px 6px', 
+                      fontSize: '12px', 
+                      borderColor: slotType === 'ev' ? 'var(--cyan)' : '' 
+                    }}
                   >
-                    ⚡ EV Bay<br/>$6.00/hr
+                    <EV size={16} />
+                    <span>EV Bay<br/>₹60/hr</span>
                   </button>
                   <button
                     type="button"
                     className={`btn ${slotType === 'disabled' ? 'btn-active' : ''}`}
                     onClick={() => setSlotType('disabled')}
-                    style={{ flex: 1, padding: '12px 6px', fontSize: '12px', borderColor: slotType === 'disabled' ? '#2563eb' : '' }}
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      gap: '4px',
+                      padding: '12px 6px', 
+                      fontSize: '12px', 
+                      borderColor: slotType === 'disabled' ? '#2563eb' : '' 
+                    }}
                   >
-                    ♿ Disabled<br/>$2.00/hr
+                    <Disabled size={16} />
+                    <span>Disabled<br/>₹20/hr</span>
                   </button>
                 </div>
               </div>
@@ -302,7 +337,7 @@ export default function GuestPortal({
                 style={{ width: '100%', padding: '14px', marginTop: '12px', fontWeight: 'bold' }}
                 disabled={isScanning}
               >
-                📥 Confirm Check-In & Allocate Slot
+                Confirm Check-In & Allocate Slot
               </button>
             </form>
           </div>
@@ -311,7 +346,8 @@ export default function GuestPortal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div className="card" style={{ padding: '20px' }}>
               <div className="section-title">
-                <span>👁️ AI Camera OCR Scanner Simulator</span>
+                <Camera size={18} style={{ color: 'var(--cyan)' }} />
+                <span>AI Camera OCR Scanner Simulator</span>
               </div>
               
               <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px', textAlign: 'left' }}>
@@ -324,15 +360,21 @@ export default function GuestPortal({
                   {isScanning && <div className="scan-line" />}
                   
                   {scannedCar ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <span style={{ fontSize: '64px', margin: 0 }}>🚗</span>
-                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <svg width="64" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" strokeWidth="1.5">
+                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9C2.1 11.1 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
+                        <circle cx="7" cy="17" r="2" />
+                        <path d="M9 17h6" />
+                        <circle cx="17" cy="17" r="2" />
+                      </svg>
+                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                         {scannedCar.color} {scannedCar.style}
                       </div>
                     </div>
                   ) : (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '12px', textAlign: 'center' }}>
-                      📷 Camera Offline<br/>Click trigger below to start OCR
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', color: 'var(--text-muted)', fontSize: '12px', textAlign: 'center' }}>
+                      <Camera size={28} />
+                      <span>Camera Offline<br/>Click trigger below to start OCR</span>
                     </div>
                   )}
 
@@ -361,9 +403,10 @@ export default function GuestPortal({
                   className="btn"
                   onClick={handleAIScan}
                   disabled={isScanning}
-                  style={{ width: '100%', borderColor: 'var(--cyan)', color: 'var(--cyan-hover)', background: 'rgba(6, 182, 212, 0.05)' }}
+                  style={{ width: '100%', borderColor: 'var(--cyan)', color: 'var(--cyan-hover)', background: 'rgba(6, 182, 212, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  📡 Trigger AI Plate Scanner
+                  <Camera size={14} />
+                  <span>Trigger AI Plate Scanner</span>
                 </button>
               </div>
             </div>
@@ -373,10 +416,11 @@ export default function GuestPortal({
 
       {/* Guest View Check-Out */}
       {activeTab === 'checkout' && (
-        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '560px', margin: '0 auto', width: '100%' }}>
           <div className="card">
             <div className="section-title">
-              <span>💳 Check-Out & Parking Bill</span>
+              <CheckOut size={18} style={{ color: 'var(--primary)' }} />
+              <span>Check-Out & Parking Bill</span>
             </div>
 
             <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px', textAlign: 'left' }}>
@@ -409,6 +453,9 @@ export default function GuestPortal({
 
             {checkoutError && (
               <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 background: 'rgba(239, 68, 68, 0.1)',
                 border: '1px solid rgba(239, 68, 68, 0.3)',
                 color: '#f87171',
@@ -417,7 +464,8 @@ export default function GuestPortal({
                 fontSize: '13px',
                 marginBottom: '20px'
               }}>
-                ❌ {checkoutError}
+                <Warning size={16} />
+                <span>{checkoutError}</span>
               </div>
             )}
 
@@ -440,22 +488,25 @@ export default function GuestPortal({
                   <div className="summary-item">
                     <span>Rate / hour</span>
                     <span>
-                      {checkoutSession.slotType === 'ev' ? '$6.00' : checkoutSession.slotType === 'disabled' ? '$2.00' : '$4.00'}
+                      {checkoutSession.slotType === 'ev' ? '₹60.00' : checkoutSession.slotType === 'disabled' ? '₹20.00' : '₹40.00'}
                     </span>
                   </div>
                 </div>
 
                 {/* Developer testing: Simulated time controls */}
                 <div style={{
-                  background: 'rgba(245, 158, 11, 0.05)',
-                  border: '1px solid rgba(245, 158, 11, 0.2)',
-                  borderRadius: '8px',
-                  padding: '14px',
-                  marginBottom: '20px',
-                  textAlign: 'left'
+                background: 'var(--bg-secondary)',
+              padding: '16px 20px',
+              borderRadius: '14px',
+              marginBottom: '20px',
+              textAlign: 'left',
+              boxShadow: 'var(--clay-shadow-inset)'
                 }}>
-                  <label className="form-label" style={{ color: '#fbbf24', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span>⚙️ Speed-up duration for testing:</span>
+                  <label className="form-label" style={{ color: '#fbbf24', display: 'flex', justifyContent: 'space-between', fontSize: '12px', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Clock size={14} />
+                      <span>Speed-up duration for testing:</span>
+                    </span>
                     <strong>{simulatedDurationHours} Hour{simulatedDurationHours > 1 ? 's' : ''}</strong>
                   </label>
                   <input
@@ -464,12 +515,12 @@ export default function GuestPortal({
                     max="24"
                     value={simulatedDurationHours}
                     onChange={(e) => setSimulatedDurationHours(Number(e.target.value))}
-                    style={{ width: '100%', accentColor: 'var(--warning)', cursor: 'pointer' }}
+                    style={{ width: '100%', accentColor: 'var(--warning)', cursor: 'pointer', marginTop: '6px' }}
                   />
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    <span>1 Hour ($)</span>
-                    <span>12 Hours ($)</span>
-                    <span>24 Hours ($)</span>
+                    <span>1 Hour (₹)</span>
+                    <span>12 Hours (₹)</span>
+                    <span>24 Hours (₹)</span>
                   </div>
                 </div>
 
@@ -477,15 +528,15 @@ export default function GuestPortal({
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  background: 'rgba(255,255,255,0.03)',
-                  padding: '16px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-color)',
-                  marginBottom: '20px'
+                  background: 'var(--success-bg)',
+                  padding: '16px 20px',
+                  borderRadius: '16px',
+                  marginBottom: '20px',
+                  boxShadow: 'var(--clay-shadow-sm)'
                 }}>
                   <span style={{ fontSize: '14px', fontWeight: '600' }}>TOTAL AMOUNT DUE:</span>
-                  <span style={{ fontSize: '24px', fontWeight: '800', color: 'var(--success-hover)', fontFamily: 'var(--font-title)' }}>
-                    ${calculateFees().toFixed(2)}
+                  <span style={{ fontSize: '26px', fontWeight: '900', color: 'var(--success)', fontFamily: 'var(--font-title)' }}>
+                    ₹{calculateFees().toFixed(0)}
                   </span>
                 </div>
 
@@ -495,7 +546,7 @@ export default function GuestPortal({
                   style={{ width: '100%', padding: '14px', fontWeight: 'bold' }}
                   onClick={() => setPaymentModalOpen(true)}
                 >
-                  💳 Proceed to QR Payment
+                  Proceed to QR Payment
                 </button>
               </div>
             )}
@@ -507,24 +558,24 @@ export default function GuestPortal({
       {ticketPrintout && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '380px' }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎟️</div>
+            <Ticket size={48} style={{ color: 'var(--primary)', marginBottom: '12px' }} />
             <h3 className="modal-title">Smart Parking Ticket</h3>
             <p className="modal-subtitle">Allocated successfully! Please park in your designated space.</p>
             
             <div style={{
-              background: '#090911',
-              border: '2px dashed var(--border-color)',
-              borderRadius: '8px',
+              background: 'var(--bg-secondary)',
+              border: '2px dashed rgba(124,92,191,0.2)',
+              borderRadius: '16px',
               padding: '16px',
               textAlign: 'left',
               fontFamily: 'monospace',
               fontSize: '13px',
-              color: '#d1d5db',
+              color: 'var(--text-secondary)',
               marginBottom: '20px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span>PLATE:</span>
-                <strong style={{ color: '#fff' }}>{ticketPrintout.plate}</strong>
+                <strong style={{ color: 'var(--text-primary)' }}>{ticketPrintout.plate}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span>ALLOCATED SPACE:</span>
@@ -542,20 +593,20 @@ export default function GuestPortal({
               {/* Simulated barcode */}
               <div style={{
                 height: '40px',
-                borderTop: '1px solid #4b5563',
-                borderBottom: '1px solid #4b5563',
+                borderTop: '1px solid rgba(124,92,191,0.2)',
+                borderBottom: '1px solid rgba(124,92,191,0.2)',
                 display: 'flex',
                 alignItems: 'stretch',
                 padding: '4px 0',
                 gap: '2px',
-                opacity: 0.7
+                opacity: 0.6
               }}>
                 {[1,3,2,1,4,1,2,3,1,2,4,1,2,1,3,2,1,4,1,2].map((w, i) => (
-                  <div key={i} style={{ width: `${w}px`, background: '#fff', flexGrow: 1 }} />
+                  <div key={i} style={{ width: `${w}px`, background: 'var(--primary-dark)', flexGrow: 1 }} />
                 ))}
               </div>
               <div style={{ textAlign: 'center', fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                AI-SMART-SYS-{ticketPrintout.slotId}-{ticketPrintout.plate}
+                SMART-SYS-{ticketPrintout.slotId}-{ticketPrintout.plate}
               </div>
             </div>
 
@@ -574,7 +625,7 @@ export default function GuestPortal({
               {paymentSuccess ? 'Payment Processed!' : 'Scan QR to Pay'}
             </h3>
             <p className="modal-subtitle">
-              {paymentSuccess ? 'Thank you! Enjoy your trip.' : `Please scan the code with your bank/UPI app`}
+              {paymentSuccess ? 'Thank you! Enjoy your trip.' : `Scan the UPI code to transfer`}
             </p>
 
             {paymentSuccess ? (
@@ -588,12 +639,11 @@ export default function GuestPortal({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '32px',
                   color: 'var(--success-hover)',
                   marginBottom: '16px',
                   animation: 'pulse 1s infinite alternate'
                 }}>
-                  ✓
+                  <Check size={32} />
                 </div>
                 <strong style={{ color: 'var(--success-hover)' }}>Exit Gate Released!</strong>
                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
@@ -607,7 +657,7 @@ export default function GuestPortal({
                 </div>
                 
                 <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#fff', marginBottom: '16px' }}>
-                  Amount: ${calculateFees().toFixed(2)}
+                  Amount: ₹{calculateFees().toFixed(0)}
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px' }}>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Logs, Search, Car, EV, Disabled, Warning } from './Icons';
 
 export default function VehicleList({ parkings, onCheckout }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,7 +66,10 @@ export default function VehicleList({ parkings, onCheckout }) {
   return (
     <div className="card">
       <div className="section-title">
-        <span>📋 Vehicle Records & Logs</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Logs size={18} style={{ color: 'var(--primary)' }} />
+          <span>Vehicle Records & Logs</span>
+        </span>
         <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-secondary)' }}>
           Found {totalItems} entries
         </span>
@@ -80,11 +84,13 @@ export default function VehicleList({ parkings, onCheckout }) {
         alignItems: 'center'
       }}>
         {/* Search */}
-        <div style={{ flex: 1, minWidth: '200px' }}>
+        <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
+          <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             type="text"
             className="form-control"
-            placeholder="🔍 Search Plate Number or Slot..."
+            placeholder="Search Plate Number or Slot..."
+            style={{ paddingLeft: '40px' }}
             value={searchTerm}
             onChange={handleSearchChange}
           />
@@ -166,8 +172,23 @@ export default function VehicleList({ parkings, onCheckout }) {
                     <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{p.slotId}</span>
                   </td>
                   <td>
-                    <span style={{ fontSize: '12px' }}>
-                      {p.slotType === 'ev' ? '⚡ EV Bay' : p.slotType === 'disabled' ? '♿ Disabled' : '🚗 Standard'}
+                    <span style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {p.slotType === 'ev' ? (
+                        <>
+                          <EV size={14} style={{ color: 'var(--cyan)' }} />
+                          <span>EV Bay</span>
+                        </>
+                      ) : p.slotType === 'disabled' ? (
+                        <>
+                          <Disabled size={14} style={{ color: '#60a5fa' }} />
+                          <span>Disabled</span>
+                        </>
+                      ) : (
+                        <>
+                          <Car size={14} style={{ color: 'var(--primary-hover)' }} />
+                          <span>Standard</span>
+                        </>
+                      )}
                     </span>
                   </td>
                   <td>{formatTime(p.entryTime)}</td>
@@ -175,7 +196,7 @@ export default function VehicleList({ parkings, onCheckout }) {
                   <td>{getDuration(p.entryTime, p.exitTime)}</td>
                   <td>
                     <strong style={{ color: p.fee ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                      {p.fee ? `$${p.fee.toFixed(2)}` : '—'}
+                      {p.fee ? `₹${p.fee.toFixed(0)}` : '—'}
                     </strong>
                   </td>
                   <td>
@@ -213,7 +234,10 @@ export default function VehicleList({ parkings, onCheckout }) {
             ) : (
               <tr>
                 <td colSpan="9" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>
-                  🚫 No matching vehicle records found. Try adjusting filters or simulators.
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <Warning size={18} style={{ color: 'var(--warning)' }} />
+                    <span>No matching vehicle records found. Try adjusting filters or simulators.</span>
+                  </div>
                 </td>
               </tr>
             )}
