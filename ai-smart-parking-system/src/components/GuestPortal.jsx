@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Tesseract from 'tesseract.js';
 import { 
   CheckIn, 
   CheckOut, 
@@ -12,15 +13,7 @@ import {
   Clock 
 } from './Icons';
 
-// List of mock vehicles for the Indian AI scanning simulation
-const MOCK_SCANNED_CARS = [
-  { plate: 'DL-01-CA-1234', style: 'Sedan', color: 'Midnight Silver' },
-  { plate: 'MH-12-DE-7777', style: 'SUV', color: 'Sunset Gold' },
-  { plate: 'KL-07-XY-9999', style: 'Hatchback', color: 'Cyber Green' },
-  { plate: 'KA-03-AB-1111', style: 'SUV', color: 'Solid White' },
-  { plate: 'HR-26-BC-7890', style: 'Luxury Sedan', color: 'Carbon Black' },
-  { plate: 'UP-16-AA-5678', style: 'Compact SUV', color: 'Cherry Red' }
-];
+// (Mock vehicles no longer used for live scanning)
 
 export default function GuestPortal({ 
   parkings, 
@@ -37,9 +30,16 @@ export default function GuestPortal({
   
   // AI Scan Simulation State
   const [isScanning, setIsScanning] = useState(false);
-  const [scannedCar, setScannedCar] = useState(null);
   const [ocrText, setOcrText] = useState('');
   const [scanSuccess, setScanSuccess] = useState(false);
+  const [hasAutoScanned, setHasAutoScanned] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+
+  // Camera & Canvas Refs
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const scanIntervalRef = useRef(null);
 
   // Check-Out Form State
   const [checkoutPlate, setCheckoutPlate] = useState('');
@@ -51,48 +51,104 @@ export default function GuestPortal({
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  // AI OCR decryption text effect
-  useEffect(() => {
-    if (!isScanning) return;
-    
-    let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-';
-    let iterations = 0;
-    const targetPlate = scannedCar.plate;
-
-    const interval = setInterval(() => {
-      setOcrText(prev => {
-        return targetPlate.split('')
-          .map((char, index) => {
-            if (index < iterations) return targetPlate[index];
-            return chars[Math.floor(Math.random() * chars.length)];
-          })
-          .join('');
-      });
-      
-      iterations += 0.5;
-      if (iterations >= targetPlate.length + 1) {
-        clearInterval(interval);
-        setOcrText(targetPlate);
-        setPlateNumber(targetPlate);
-        setIsScanning(false);
-        setScanSuccess(true);
-        // Clear scan success flash after 1s
-        setTimeout(() => setScanSuccess(false), 1200);
-      }
-    }, 80);
-
-    return () => clearInterval(interval);
-  }, [isScanning, scannedCar]);
-
-  // Handle AI Scan trigger
-  const handleAIScan = () => {
-    if (isScanning) return;
-    setScanSuccess(false);
-    const randomCar = MOCK_SCANNED_CARS[Math.floor(Math.random() * MOCK_SCANNED_CARS.length)];
-    setScannedCar(randomCar);
-    setIsScanning(true);
-    setOcrText('--------------');
+  // Stop Camera
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    setIsScanning(false);
   };
+
+  // Start Camera
+  const startCamera = async () => {
+    setCameraError('');
+    setScanSuccess(false);
+    setOcrText('INITIALIZING CAMERA...');
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      streamRef.current = stream;
+      setIsScanning(true);
+      setOcrText('SCANNING FOR PLATE...');
+      
+      // Start OCR loop
+      scanIntervalRef.current = setInterval(captureAndScan, 2000);
+    } catch (err) {
+      console.error("Camera access error:", err);
+      setCameraError('Camera access denied or not available.');
+      setOcrText('CAMERA ERROR');
+      setIsScanning(false);
+    }
+  };
+
+  // Capture Frame and Run OCR
+  const captureAndScan = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    try {
+      const { data: { text } } = await Tesseract.recognize(
+        canvas,
+        'eng',
+        { logger: m => console.log(m) }
+      );
+      
+      // Clean OCR output (allow uppercase alphanumeric and dash/space)
+      const cleanText = text.replace(/[^A-Z0-9- ]/gi, '').trim().toUpperCase();
+      
+      // Basic validation: >= 6 chars, contains both letters and numbers
+      if (cleanText.length >= 6 && /[A-Z]/.test(cleanText) && /[0-9]/.test(cleanText)) {
+        setOcrText(cleanText);
+        setPlateNumber(cleanText);
+        setScanSuccess(true);
+        stopCamera();
+        
+        setTimeout(() => setScanSuccess(false), 2000);
+      }
+    } catch (error) {
+      console.error("OCR Error:", error);
+    }
+  };
+
+  // Cleanup on unmount or tab change
+  useEffect(() => {
+    if (activeTab !== 'checkin') {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [activeTab]);
+
+  // Auto-detect plate when opening check-in tab
+  useEffect(() => {
+    if (activeTab === 'checkin' && !hasAutoScanned) {
+      const timer = setTimeout(() => {
+        startCamera();
+        setHasAutoScanned(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, hasAutoScanned]);
 
   // Submit Check-In
   const handleCheckInSubmit = (e) => {
@@ -112,7 +168,6 @@ export default function GuestPortal({
       });
       // Reset form fields
       setPlateNumber('');
-      setScannedCar(null);
       setOcrText('');
     } else {
       alert(result.error);
@@ -355,30 +410,34 @@ export default function GuestPortal({
               </p>
 
               <div className="scanner-simulation-container">
-                <div className="scanner-viewfinder">
+                <div className="scanner-viewfinder" style={{ position: 'relative', overflow: 'hidden' }}>
                   {scanSuccess && <div className="scanner-success-pulse" />}
                   {isScanning && <div className="scan-line" />}
                   
-                  {scannedCar ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                      <svg width="64" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" strokeWidth="1.5">
-                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9C2.1 11.1 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
-                        <circle cx="7" cy="17" r="2" />
-                        <path d="M9 17h6" />
-                        <circle cx="17" cy="17" r="2" />
-                      </svg>
-                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                        {scannedCar.color} {scannedCar.style}
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', color: 'var(--text-muted)', fontSize: '12px', textAlign: 'center' }}>
-                      <Camera size={28} />
-                      <span>Camera Offline<br/>Click trigger below to start OCR</span>
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'cover',
+                      display: streamRef.current ? 'block' : 'none'
+                    }} 
+                  />
+                  
+                  {/* Hidden canvas for capturing frames */}
+                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+                  {!streamRef.current && !scanSuccess && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', color: cameraError ? 'var(--danger)' : 'var(--text-muted)', fontSize: '12px', textAlign: 'center', position: 'absolute' }}>
+                      {cameraError ? <Warning size={28} /> : <Camera size={28} />}
+                      <span>{cameraError ? cameraError : 'Camera Offline'}</span>
                     </div>
                   )}
 
-                  {scannedCar && (
+                  {scanSuccess && (
                     <div style={{
                       position: 'absolute',
                       bottom: '8px',
@@ -387,9 +446,9 @@ export default function GuestPortal({
                       padding: '2px 6px',
                       borderRadius: '4px',
                       fontSize: '9px',
-                      color: 'var(--cyan)'
+                      color: 'var(--success)'
                     }}>
-                      {isScanning ? 'AI PROCESSING...' : 'CLASSIFICATION: SUCCESS'}
+                      CLASSIFICATION: SUCCESS
                     </div>
                   )}
                 </div>
@@ -401,12 +460,12 @@ export default function GuestPortal({
                 <button
                   type="button"
                   className="btn"
-                  onClick={handleAIScan}
+                  onClick={startCamera}
                   disabled={isScanning}
                   style={{ width: '100%', borderColor: 'var(--cyan)', color: 'var(--cyan-hover)', background: 'rgba(6, 182, 212, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
                   <Camera size={14} />
-                  <span>Trigger AI Plate Scanner</span>
+                  <span>{isScanning ? 'Scanning...' : 'Trigger AI Plate Scanner'}</span>
                 </button>
               </div>
             </div>

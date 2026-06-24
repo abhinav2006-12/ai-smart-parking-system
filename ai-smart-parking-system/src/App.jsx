@@ -447,23 +447,21 @@ export default function App() {
           ) : (
             <div>
               {/* Admin Inner Menu */}
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '28px', flexWrap: 'wrap' }}>
-                <button 
-                  className={`btn ${adminSubView === 'dashboard' ? 'btn-primary' : ''}`}
+              <div className="tab-nav">
+                <div 
+                  className={`tab-item ${adminSubView === 'dashboard' ? 'active' : ''}`}
                   onClick={() => setAdminSubView('dashboard')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  <Dashboard size={16} />
+                  <Dashboard size={18} />
                   <span>Core Dashboard</span>
-                </button>
-                <button 
-                  className={`btn ${adminSubView === 'vehicles' ? 'btn-primary' : ''}`}
+                </div>
+                <div 
+                  className={`tab-item ${adminSubView === 'vehicles' ? 'active' : ''}`}
                   onClick={() => setAdminSubView('vehicles')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  <Logs size={16} />
+                  <Logs size={18} />
                   <span>Vehicle Directory</span>
-                </button>
+                </div>
               </div>
 
               {/* View Selection */}

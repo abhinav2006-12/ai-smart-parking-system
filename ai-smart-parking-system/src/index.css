@@ -766,7 +766,7 @@ body {
 .tab-nav {
   display: flex;
   gap: 10px;
-  margin-bottom: 28px;
+  margin: 0 auto 28px;
   background: var(--bg-surface);
   padding: 8px;
   border-radius: var(--r-sm);
