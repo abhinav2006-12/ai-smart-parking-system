@@ -91,59 +91,155 @@ export default function GuestPortal({
     }
   };
 
-  // Capture Frame and Run OCR
-  const captureAndScan = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+  // Capture Frame and Run OCR (Improved Accuracy)
+const captureAndScan = async () => {
+  if (!videoRef.current || !canvasRef.current) return;
 
-    // We only want to capture the center region (the target box) to improve OCR accuracy.
-    // The target box is 80% width and 40% height of the video container.
-    const cropWidth = video.videoWidth * 0.8;
-    const cropHeight = video.videoHeight * 0.4;
-    const startX = (video.videoWidth - cropWidth) / 2;
-    const startY = (video.videoHeight - cropHeight) / 2;
+  const video = videoRef.current;
+  const canvas = canvasRef.current;
+  const ctx = canvas.getContext("2d");
 
-    canvas.width = cropWidth;
-    canvas.height = cropHeight;
-    
-    // Draw only the cropped center region, but scale it up slightly for better OCR resolution
-    ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth * 1.5, cropHeight * 1.5);
-    
-    try {
-      const { data: { text } } = await Tesseract.recognize(
+  if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+
+  // Crop plate area
+  const cropWidth = video.videoWidth * 0.8;
+  const cropHeight = video.videoHeight * 0.4;
+
+  const startX = (video.videoWidth - cropWidth) / 2;
+  const startY = (video.videoHeight - cropHeight) / 2;
+
+
+  canvas.width = cropWidth * 2;
+  canvas.height = cropHeight * 2;
+
+
+  // Draw enlarged image
+  ctx.drawImage(
+    video,
+    startX,
+    startY,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  // Improve image quality
+  const imageData = ctx.getImageData(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  const data = imageData.data;
+
+
+  for(let i=0;i<data.length;i+=4){
+
+    let avg =
+      (data[i] +
+      data[i+1] +
+      data[i+2]) / 3;
+
+
+    // contrast + black/white threshold
+    let value = avg > 130 ? 255 : 0;
+
+
+    data[i] = value;
+    data[i+1] = value;
+    data[i+2] = value;
+  }
+
+
+  ctx.putImageData(imageData,0,0);
+
+
+
+  try {
+
+    const {data:{text}} =
+      await Tesseract.recognize(
         canvas,
-        'eng',
-        { logger: m => console.log(m) }
+        "eng",
+        {
+
+          logger:m=>console.log(m),
+
+          tessedit_char_whitelist:
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-",
+
+          tessedit_pageseg_mode:7
+
+        }
       );
-      
-      // Clean OCR output (allow uppercase alphanumeric and dash/space)
-      const cleanText = text.replace(/[^A-Z0-9- ]/gi, '').trim().toUpperCase();
-      
-      // Strict extraction: find an Indian license plate pattern
-      // Format: State(2 letters) + RTO(1-2 digits) + Series(1-3 letters) + Number(1-4 digits)
-      const plateRegex = /[A-Z]{2}[-\s]*[0-9]{1,2}[-\s]*[A-Z]{1,3}[-\s]*[0-9]{1,4}/;
-      const match = cleanText.match(plateRegex);
-      
-      if (match) {
-        // Only extract the matched plate, completely ignoring background text!
-        const extractedPlate = match[0].trim();
-        
-        setOcrText(extractedPlate);
-        setPlateNumber(extractedPlate);
-        setScanSuccess(true);
-        stopCamera();
-        
-        setTimeout(() => setScanSuccess(false), 2000);
-      }
-    } catch (error) {
-      console.error("OCR Error:", error);
+
+
+    console.log("RAW OCR:",text);
+
+
+
+    let cleanText =
+      text
+      .replace(/[^A-Z0-9]/gi,"")
+      .toUpperCase();
+
+
+
+    // Indian plate detection
+    const plateRegex =
+      /[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{1,4}/;
+
+
+    const match =
+      cleanText.match(plateRegex);
+
+
+
+    if(match){
+
+      let plate = match[0];
+
+
+      // add dash format
+      plate =
+      plate.replace(
+        /^([A-Z]{2})(\d{2})([A-Z]{1,3})(\d{4})$/,
+        "$1-$2-$3-$4"
+      );
+
+
+      setOcrText(plate);
+      setPlateNumber(plate);
+      setScanSuccess(true);
+
+
+      stopCamera();
+
+
+      setTimeout(()=>{
+        setScanSuccess(false);
+      },2000);
+
     }
-  };
+
+
+  } catch(error){
+
+    console.log(
+      "OCR ERROR",
+      error
+    );
+
+  }
+
+};
+  
 
   // Cleanup on unmount or tab change
   useEffect(() => {
