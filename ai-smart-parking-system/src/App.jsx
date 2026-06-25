@@ -1,500 +1,244 @@
-import { useState, useEffect } from 'react';
-import AdminLogin from './components/AdminLogin';
-import AdminDashboard from './components/AdminDashboard';
-import VehicleList from './components/VehicleList';
-import GuestPortal from './components/GuestPortal';
-import { Logo, Guest, Admin, Dashboard, Logs } from './components/Icons';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import './App.css';
 
-// Seed initial dataset if storage is empty
-const INITIAL_SLOTS = [];
-// A1 to A40: Standard
-for (let i = 1; i <= 40; i++) {
-  INITIAL_SLOTS.push({ id: `A${i}`, type: 'standard', isOccupied: false });
-}
-// B1 to B10: EV Charging
-for (let i = 1; i <= 10; i++) {
-  INITIAL_SLOTS.push({ id: `B${i}`, type: 'ev', isOccupied: false });
-}
-// C1 to C10: Disabled
-for (let i = 1; i <= 10; i++) {
-  INITIAL_SLOTS.push({ id: `C${i}`, type: 'disabled', isOccupied: false });
-}
-
-// Generate yesterday's date
-const YESTERDAY = new Date();
-YESTERDAY.setDate(YESTERDAY.getDate() - 1);
-
-// Generate today's date
-const TODAY = new Date();
-
-const INITIAL_LOGS = [
-  // Exited yesterday (adds to yesterday's revenue in INR)
+const vehicles = [
   {
-    id: 'log-1',
-    plateNumber: 'DL-3C-AB-1234',
-    slotId: 'A12',
-    slotType: 'standard',
-    entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 9, 30).toISOString(),
-    exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 13, 0).toISOString(),
-    fee: 140.00, // 3.5 hrs * ₹40
-    status: 'completed'
+    plateNumber: 'KL07CX4581',
+    vehicleType: 'Car',
+    slot: 'A-14',
+    confidence: 96,
+    lane: 'ENTRY GATE 01',
+    color: '#2dd4bf',
   },
   {
-    id: 'log-2',
-    plateNumber: 'MH-12-CD-5678',
-    slotId: 'B3',
-    slotType: 'ev',
-    entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 8, 0).toISOString(),
-    exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 12, 30).toISOString(),
-    fee: 270.00, // 4.5 hrs * ₹60
-    status: 'completed'
+    plateNumber: 'MH12BT9022',
+    vehicleType: 'Bike',
+    slot: 'B-08',
+    confidence: 93,
+    lane: 'ENTRY GATE 01',
+    color: '#60a5fa',
   },
   {
-    id: 'log-3',
-    plateNumber: 'KL-07-XY-9999',
-    slotId: 'C1',
-    slotType: 'disabled',
-    entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 14, 15).toISOString(),
-    exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 16, 45).toISOString(),
-    fee: 60.00, // 3 hrs * ₹20
-    status: 'completed'
+    plateNumber: 'KA03MN7744',
+    vehicleType: 'Car',
+    slot: 'A-21',
+    confidence: 98,
+    lane: 'ENTRY GATE 02',
+    color: '#f59e0b',
   },
   {
-    id: 'log-4',
-    plateNumber: 'KA-03-AA-1111',
-    slotId: 'A15',
-    slotType: 'standard',
-    entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 10, 0).toISOString(),
-    exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 18, 0).toISOString(),
-    fee: 320.00, // 8 hrs * ₹40
-    status: 'completed'
+    plateNumber: 'TN09QD1165',
+    vehicleType: 'Bike',
+    slot: 'B-03',
+    confidence: 94,
+    lane: 'ENTRY GATE 02',
+    color: '#a78bfa',
   },
-  {
-    id: 'log-5',
-    plateNumber: 'HR-26-BC-7890',
-    slotId: 'B7',
-    slotType: 'ev',
-    entryTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 16, 0).toISOString(),
-    exitTime: new Date(YESTERDAY.getFullYear(), YESTERDAY.getMonth(), YESTERDAY.getDate(), 19, 0).toISOString(),
-    fee: 180.00, // 3 hrs * ₹60
-    status: 'completed'
-  },
-
-  // Exited today (adds to today's revenue in INR)
-  {
-    id: 'log-6',
-    plateNumber: 'UP-16-BD-8800',
-    slotId: 'A20',
-    slotType: 'standard',
-    entryTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 7, 0).toISOString(),
-    exitTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 11, 0).toISOString(),
-    fee: 160.00, // 4 hrs * ₹40
-    status: 'completed'
-  },
-  {
-    id: 'log-7',
-    plateNumber: 'MH-02-EE-3344',
-    slotId: 'B1',
-    slotType: 'ev',
-    entryTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 8, 30).toISOString(),
-    exitTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 12, 0).toISOString(),
-    fee: 210.00, // 3.5 hrs * ₹60
-    status: 'completed'
-  },
-  {
-    id: 'log-8',
-    plateNumber: 'DL-01-A-1002',
-    slotId: 'A25',
-    slotType: 'standard',
-    entryTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 10, 15).toISOString(),
-    exitTime: new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 12, 45).toISOString(),
-    fee: 120.00, // 3 hrs * ₹40
-    status: 'completed'
-  },
-
-  // Active Parking logs (still parked)
-  {
-    id: 'log-9',
-    plateNumber: 'MH-14-AA-1212',
-    slotId: 'A5',
-    slotType: 'standard',
-    entryTime: new Date(TODAY.getTime() - 2.5 * 60 * 60 * 1000).toISOString(), // 2.5 hours ago
-    exitTime: null,
-    fee: null,
-    status: 'active'
-  },
-  {
-    id: 'log-10',
-    plateNumber: 'KA-51-MM-0099',
-    slotId: 'B2',
-    slotType: 'ev',
-    entryTime: new Date(TODAY.getTime() - 1.2 * 60 * 60 * 1000).toISOString(), // 1.2 hours ago
-    exitTime: null,
-    fee: null,
-    status: 'active'
-  },
-  {
-    id: 'log-11',
-    plateNumber: 'KL-01-CB-4545',
-    slotId: 'C5',
-    slotType: 'disabled',
-    entryTime: new Date(TODAY.getTime() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-    exitTime: null,
-    fee: null,
-    status: 'active'
-  },
-  {
-    id: 'log-12',
-    plateNumber: 'DL-4C-K-3000',
-    slotId: 'A10',
-    slotType: 'standard',
-    entryTime: new Date(TODAY.getTime() - 0.5 * 60 * 60 * 1000).toISOString(), // 30 mins ago
-    exitTime: null,
-    fee: null,
-    status: 'active'
-  },
-  {
-    id: 'log-13',
-    plateNumber: 'HR-51-Q-6677',
-    slotId: 'A36',
-    slotType: 'standard',
-    entryTime: new Date(TODAY.getTime() - 5.8 * 60 * 60 * 1000).toISOString(), // 5.8 hours ago
-    exitTime: null,
-    fee: null,
-    status: 'active'
-  }
 ];
 
-export default function App() {
-  const [view, setView] = useState('guest'); // 'guest' | 'admin'
-  const [adminSubView, setAdminSubView] = useState('dashboard'); // 'dashboard' | 'vehicles'
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+const timeFormat = new Intl.DateTimeFormat('en-IN', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: true,
+});
 
-  // Core system databases
-  const [slots, setSlots] = useState([]);
-  const [parkings, setParkings] = useState([]);
-  const [revenueToday, setRevenueToday] = useState(0);
-  const [revenueYesterday, setRevenueYesterday] = useState(0);
+function DetectionCard({ detection }) {
+  return (
+    <aside className="detection-card" aria-label="Latest detected vehicle">
+      <div className="card-topline">
+        <span className="live-dot" />
+        <span>Vehicle detected</span>
+      </div>
+      <div className="plate-number">{detection.plateNumber}</div>
+      <dl className="detection-fields">
+        <div>
+          <dt>Entry time</dt>
+          <dd>{detection.entryTime}</dd>
+        </div>
+        <div>
+          <dt>Allotted slot</dt>
+          <dd>{detection.slot}</dd>
+        </div>
+        <div>
+          <dt>Vehicle type</dt>
+          <dd>{detection.vehicleType}</dd>
+        </div>
+        <div>
+          <dt>Confidence</dt>
+          <dd>{detection.confidence}%</dd>
+        </div>
+      </dl>
+    </aside>
+  );
+}
 
-  // Initialize DB from LocalStorage or seed data
-  useEffect(() => {
-    const storedSlots = localStorage.getItem('ai_parking_slots');
-    const storedLogs = localStorage.getItem('ai_parking_logs');
-
-    let loadedSlots = [];
-    let loadedLogs = [];
-
-    if (storedSlots && storedLogs) {
-      loadedSlots = JSON.parse(storedSlots);
-      loadedLogs = JSON.parse(storedLogs);
-    } else {
-      // Seed databases
-      loadedLogs = [...INITIAL_LOGS];
-      loadedSlots = [...INITIAL_SLOTS];
-      
-      // Update seeded slots status based on active logs
-      loadedLogs.forEach(log => {
-        if (log.status === 'active') {
-          const slot = loadedSlots.find(s => s.id === log.slotId);
-          if (slot) slot.isOccupied = true;
-        }
-      });
-
-      localStorage.setItem('ai_parking_slots', JSON.stringify(loadedSlots));
-      localStorage.setItem('ai_parking_logs', JSON.stringify(loadedLogs));
-    }
-
-    setSlots(loadedSlots);
-    setParkings(loadedLogs);
-  }, []);
-
-  // Compute revenues dynamically whenever parkings state changes
-  useEffect(() => {
-    if (parkings.length === 0) return;
-
-    let revToday = 0;
-    let revYesterday = 0;
-    
-    const startOfToday = new Date();
-    startOfToday.setHours(0,0,0,0);
-
-    const startOfYesterday = new Date();
-    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-    startOfYesterday.setHours(0,0,0,0);
-
-    parkings.forEach(log => {
-      if (log.status === 'completed' && log.fee) {
-        const exitDate = new Date(log.exitTime);
-        if (exitDate >= startOfToday) {
-          revToday += log.fee;
-        } else if (exitDate >= startOfYesterday && exitDate < startOfToday) {
-          revYesterday += log.fee;
-        }
-      }
-    });
-
-    setRevenueToday(revToday);
-    setRevenueYesterday(revYesterday);
-    
-    // Save to local storage on edits
-    localStorage.setItem('ai_parking_logs', JSON.stringify(parkings));
-  }, [parkings]);
-
-  useEffect(() => {
-    if (slots.length === 0) return;
-    localStorage.setItem('ai_parking_slots', JSON.stringify(slots));
-  }, [slots]);
-
-  // Core action: check-in a vehicle
-  const handleCheckIn = (plateNumber, type) => {
-    // 1. Check if plate is already active in parking
-    const isAlreadyParked = parkings.some(p => p.plateNumber === plateNumber && p.status === 'active');
-    if (isAlreadyParked) {
-      return { success: false, error: `Vehicle ${plateNumber} is already checked-in.` };
-    }
-
-    // 2. Find empty slot of requested type
-    const emptySlot = slots.find(s => s.type === type && !s.isOccupied);
-    if (!emptySlot) {
-      return { success: false, error: `No empty ${type.toUpperCase()} slots are currently available.` };
-    }
-
-    // 3. Occupy slot
-    const updatedSlots = slots.map(s => {
-      if (s.id === emptySlot.id) {
-        return { ...s, isOccupied: true };
-      }
-      return s;
-    });
-
-    // 4. Create check-in log
-    const newParking = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      plateNumber: plateNumber.toUpperCase(),
-      slotId: emptySlot.id,
-      slotType: type,
-      entryTime: new Date().toISOString(),
-      exitTime: null,
-      fee: null,
-      status: 'active'
-    };
-
-    setSlots(updatedSlots);
-    setParkings(prev => [newParking, ...prev]);
-
-    return { success: true, parking: newParking };
-  };
-
-  // Core action: complete payment check-out
-  const handleCheckOutSuccess = (plateNumber, fee) => {
-    const activeParking = parkings.find(p => p.plateNumber === plateNumber && p.status === 'active');
-    if (!activeParking) {
-      return { success: false, error: 'Vehicle record not found.' };
-    }
-
-    // Free the slot
-    const updatedSlots = slots.map(s => {
-      if (s.id === activeParking.slotId) {
-        return { ...s, isOccupied: false };
-      }
-      return s;
-    });
-
-    // Update logging record
-    const updatedParkings = parkings.map(p => {
-      if (p.id === activeParking.id) {
-        return {
-          ...p,
-          status: 'completed',
-          exitTime: new Date().toISOString(),
-          fee: fee
-        };
-      }
-      return p;
-    });
-
-    setSlots(updatedSlots);
-    setParkings(updatedParkings);
-
-    return { success: true };
-  };
-
-  // Admin Console Simulator: Generate random Indian car entry
-  const handleSimulateCheckIn = () => {
-    const states = ['DL', 'MH', 'KA', 'KL', 'HR', 'UP', 'GJ', 'TN', 'AP', 'TS'];
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    
-    const randomState = states[Math.floor(Math.random() * states.length)];
-    const randomCode = Math.floor(1 + Math.random() * 14).toString().padStart(2, '0');
-    const randomLetters = alphabet[Math.floor(Math.random() * 26)] + alphabet[Math.floor(Math.random() * 26)];
-    const randomDigits = Math.floor(1000 + Math.random() * 9000);
-    
-    const randomPlate = `${randomState}-${randomCode}-${randomLetters}-${randomDigits}`;
-
-    const types = ['standard', 'standard', 'standard', 'ev', 'disabled'];
-    const randomType = types[Math.floor(Math.random() * types.length)];
-
-    const result = handleCheckIn(randomPlate, randomType);
-    if (!result.success) {
-      alert(`Simulation failed: ${result.error}`);
-    }
-  };
-
-  // Admin Console Simulator: Generate random check-out of an active vehicle
-  const handleSimulateCheckOut = (specificPlate = null) => {
-    let activePlate = specificPlate;
-
-    if (!activePlate) {
-      const activeVehicles = parkings.filter(p => p.status === 'active');
-      if (activeVehicles.length === 0) return;
-      activePlate = activeVehicles[Math.floor(Math.random() * activeVehicles.length)].plateNumber;
-    }
-
-    const activeSession = parkings.find(p => p.plateNumber === activePlate && p.status === 'active');
-    if (!activeSession) return;
-
-    // Simulate 1 to 6 hours parked
-    const hours = Math.floor(1 + Math.random() * 5);
-    const rate = activeSession.slotType === 'ev' ? 60 : activeSession.slotType === 'disabled' ? 20 : 40;
-    const computedFee = hours * rate;
-
-    // Mock check-out success
-    handleCheckOutSuccess(activePlate, computedFee);
-  };
-
-  // Admin Log Out
-  const handleLogOut = () => {
-    setIsLoggedIn(false);
-  };
+function VehicleSilhouette({ type, color }) {
+  if (type === 'Bike') {
+    return (
+      <div className="bike" style={{ '--vehicle-color': color }}>
+        <span className="wheel wheel-left" />
+        <span className="wheel wheel-right" />
+        <span className="bike-frame" />
+        <span className="bike-seat" />
+      </div>
+    );
+  }
 
   return (
-    <>
-      {/* Navigation Header */}
-      <nav className="navbar">
-        <div className="brand">
-          <div className="brand-logo" style={{ background: 'linear-gradient(135deg, #16a34a, #f97316)' }}>
-            <Logo size={24} />
-          </div>
+    <div className="car" style={{ '--vehicle-color': color }}>
+      <span className="car-top" />
+      <span className="car-body" />
+      <span className="wheel car-wheel-left" />
+      <span className="wheel car-wheel-right" />
+      <span className="headlight" />
+    </div>
+  );
+}
+
+export default function App() {
+  const videoRef = useRef(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [now, setNow] = useState(new Date());
+  const [recentDetections, setRecentDetections] = useState([]);
+  const [cameraState, setCameraState] = useState('starting');
+  const [cameraError, setCameraError] = useState('');
+
+  const activeVehicle = vehicles[activeIndex];
+  const detection = useMemo(
+    () => ({
+      ...activeVehicle,
+      entryTime: timeFormat.format(now),
+      id: `${activeVehicle.plateNumber}-${now.getTime()}`,
+    }),
+    [activeVehicle, now],
+  );
+
+  useEffect(() => {
+    const clock = setInterval(() => setNow(new Date()), 1000);
+    const detector = setInterval(() => {
+      setActiveIndex((index) => (index + 1) % vehicles.length);
+      setRecentDetections((items) => [
+        {
+          ...vehicles[(activeIndex + 1) % vehicles.length],
+          entryTime: timeFormat.format(new Date()),
+        },
+        ...items,
+      ].slice(0, 4));
+    }, 5500);
+
+    return () => {
+      clearInterval(clock);
+      clearInterval(detector);
+    };
+  }, [activeIndex]);
+
+  useEffect(() => {
+    let stream;
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraState('unsupported');
+        setCameraError('Camera access is not supported in this browser.');
+        return;
+      }
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        setCameraState('live');
+        setCameraError('');
+      } catch (error) {
+        setCameraState('blocked');
+        setCameraError('Allow camera permission to show live detection.');
+      }
+    }
+
+    startCamera();
+
+    return () => {
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  return (
+    <main className="live-page">
+      <section className="camera-shell">
+        <header className="camera-header">
           <div>
-            <span className="brand-name">Smart Parking</span>
-            <div style={{ fontSize: '9px', color: 'var(--cyan-hover)', fontFamily: 'monospace', letterSpacing: '1.5px' }}>
-              WEEK_1_CORE_AI_ON
-            </div>
+            <p className="eyebrow">AI parking entry camera</p>
+            <h1>Live Vehicle Detection</h1>
           </div>
-        </div>
+          <div className="camera-status">
+            <span className="record-dot" />
+            LIVE
+          </div>
+        </header>
 
-        <div className="nav-links">
-          {/* Main Portal Toggle */}
-          <button 
-            className={`btn ${view === 'guest' ? 'btn-active' : ''}`}
-            onClick={() => setView('guest')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Guest size={16} />
-            <span>Guest Portal</span>
-          </button>
-
-          <button 
-            className={`btn ${view === 'admin' ? 'btn-active' : ''}`}
-            onClick={() => setView('admin')}
-            style={{
-              borderColor: view === 'admin' ? 'var(--primary)' : '',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <Admin size={16} />
-            <span>Admin Panel</span>
-          </button>
-
-          <span style={{ margin: '0 8px', width: '1px', height: '24px', background: 'var(--border-color)' }}></span>
-
-          {/* Active view label */}
-          {view === 'admin' ? (
-            isLoggedIn ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="role-badge admin">Admin Mode</span>
-                <button className="btn btn-sm" onClick={handleLogOut} style={{ padding: '6px 12px' }}>
-                  Log Out
-                </button>
-              </div>
-            ) : (
-              <span className="role-badge guest" style={{ background: 'rgba(245, 158, 11, 0.15)', borderColor: 'var(--warning)', color: '#fbbf24' }}>
-                Locked
-              </span>
-            )
-          ) : (
-            <span className="role-badge guest">Guest Mode</span>
-          )}
-        </div>
-      </nav>
-
-      {/* Main Content Render */}
-      <main className="main-content">
-        {view === 'guest' ? (
-          /* Guest Area */
-          <GuestPortal 
-            parkings={parkings}
-            slots={slots}
-            onCheckIn={handleCheckIn}
-            onCheckOutSuccess={handleCheckOutSuccess}
-          />
-        ) : (
-          /* Admin Area */
-          !isLoggedIn ? (
-            <AdminLogin onLoginSuccess={() => setIsLoggedIn(true)} />
-          ) : (
-            <div>
-              {/* Admin Inner Menu */}
-              <div className="tab-nav">
-                <div 
-                  className={`tab-item ${adminSubView === 'dashboard' ? 'active' : ''}`}
-                  onClick={() => setAdminSubView('dashboard')}
-                >
-                  <Dashboard size={18} />
-                  <span>Core Dashboard</span>
-                </div>
-                <div 
-                  className={`tab-item ${adminSubView === 'vehicles' ? 'active' : ''}`}
-                  onClick={() => setAdminSubView('vehicles')}
-                >
-                  <Logs size={18} />
-                  <span>Vehicle Directory</span>
-                </div>
-              </div>
-
-              {/* View Selection */}
-              {adminSubView === 'dashboard' ? (
-                <AdminDashboard 
-                  parkings={parkings}
-                  slots={slots}
-                  onSimulateCheckIn={handleSimulateCheckIn}
-                  onSimulateCheckOut={() => handleSimulateCheckOut(null)}
-                  revenueToday={revenueToday}
-                  revenueYesterday={revenueYesterday}
-                />
-              ) : (
-                <VehicleList 
-                  parkings={parkings}
-                  onCheckout={(plate) => handleSimulateCheckOut(plate)}
-                />
-              )}
+        <div className="camera-frame">
+          <video ref={videoRef} className="camera-video" playsInline muted autoPlay />
+          {cameraState !== 'live' && (
+            <div className="camera-permission">
+              <strong>{cameraState === 'starting' ? 'Starting camera...' : 'Camera not active'}</strong>
+              <span>{cameraError || 'Waiting for browser permission.'}</span>
             </div>
-          )
-        )}
-      </main>
+          )}
+          <div className="camera-noise" />
+          <div className="scan-line" />
+          <div className="road">
+            <span className="lane-mark lane-1" />
+            <span className="lane-mark lane-2" />
+            <span className="lane-mark lane-3" />
+            <span className="gate-line" />
+          </div>
 
-      {/* Footer */}
-      <footer className="footer">
-        <div>
-          © 2026 Smart Parking Systems. All rights reserved.
+          <div className="timestamp">{timeFormat.format(now)}</div>
+          <div className="camera-label">{activeVehicle.lane}</div>
+
+          <div className="tracking-box">
+            <span className="corner top-left" />
+            <span className="corner top-right" />
+            <span className="corner bottom-left" />
+            <span className="corner bottom-right" />
+            <span className="tracking-label">YOLO PLATE LOCKED</span>
+            <VehicleSilhouette type={activeVehicle.vehicleType} color={activeVehicle.color} />
+          </div>
+
+          <DetectionCard detection={detection} />
         </div>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <a href="#" className="link-hover" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Privacy Policy</a>
-          <a href="#" className="link-hover" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Terms of Service</a>
+      </section>
+
+      <section className="side-panel">
+        <div className="system-card">
+          <span className="system-value">{activeVehicle.confidence}%</span>
+          <span className="system-label">OCR confidence</span>
         </div>
-      </footer>
-    </>
+        <div className="system-card">
+          <span className="system-value">{activeVehicle.slot}</span>
+          <span className="system-label">Current allocation</span>
+        </div>
+        <div className="recent-list">
+          <h2>Recent detections</h2>
+          {(recentDetections.length ? recentDetections : [detection]).map((item, index) => (
+            <article key={`${item.plateNumber}-${index}`} className="recent-item">
+              <span className="recent-plate">{item.plateNumber}</span>
+              <span>{item.vehicleType}</span>
+              <strong>{item.slot}</strong>
+            </article>
+          ))}
+        </div>
+      </section>
+    </main>
   );
 }
