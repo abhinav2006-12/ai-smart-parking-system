@@ -13,7 +13,7 @@ export default function GuestMenu({ onCheckIn, onCheckOut, store }) {
       <div style={{ display: "grid", gap: 14, marginTop: 28 }}>
         <button
           onClick={onCheckIn}
-          className="card"
+          className="card card-hover"
           style={{ padding: "22px 22px", textAlign: "left", display: "flex", alignItems: "center", gap: 16, boxShadow: "var(--shadow-sm)", cursor: "pointer" }}
         >
           <div
@@ -43,7 +43,7 @@ export default function GuestMenu({ onCheckIn, onCheckOut, store }) {
 
         <button
           onClick={onCheckOut}
-          className="card"
+          className="card card-hover"
           style={{ padding: "22px 22px", textAlign: "left", display: "flex", alignItems: "center", gap: 16, boxShadow: "var(--shadow-sm)", cursor: "pointer" }}
         >
           <div

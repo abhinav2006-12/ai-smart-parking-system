@@ -18,15 +18,36 @@ export default function PlateCapture({ onDetected, label }) {
     reader.readAsDataURL(file);
   };
 
-  // Preprocess: grayscale + contrast stretch + upscale, tuned for plate text.
+  // Preprocess: crop center + grayscale + contrast stretch + upscale, tuned for plate text.
   const preprocess = (imgEl) => {
     const canvas = canvasRef.current;
-    const targetW = Math.min(1200, imgEl.naturalWidth * 2);
-    const scale = targetW / imgEl.naturalWidth;
+    
+    // Auto-crop to the middle region (80% width and 35% height)
+    // where license plates are most commonly positioned.
+    const cropWidth = imgEl.naturalWidth * 0.8;
+    const cropHeight = imgEl.naturalHeight * 0.35;
+    const cropX = (imgEl.naturalWidth - cropWidth) / 2;
+    const cropY = (imgEl.naturalHeight - cropHeight) / 2;
+
+    const targetW = Math.min(1200, cropWidth * 2);
+    const scale = targetW / cropWidth;
     canvas.width = targetW;
-    canvas.height = imgEl.naturalHeight * scale;
+    canvas.height = cropHeight * scale;
+    
     const ctx = canvas.getContext("2d");
-    ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+    
+    // Draw only the cropped center region to canvas
+    ctx.drawImage(
+      imgEl,
+      cropX,
+      cropY,
+      cropWidth,
+      cropHeight,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const d = imgData.data;
@@ -41,7 +62,8 @@ export default function PlateCapture({ onDetected, label }) {
     const range = Math.max(1, max - min);
     for (let i = 0; i < d.length; i += 4) {
       const v = ((d[i] - min) / range) * 255;
-      const enhanced = v < 128 ? Math.max(0, v * 0.75) : Math.min(255, v * 1.15);
+      // High contrast thresholding curve
+      const enhanced = v < 120 ? Math.max(0, v * 0.6) : Math.min(255, v * 1.3);
       d[i] = d[i + 1] = d[i + 2] = enhanced;
     }
     ctx.putImageData(imgData, 0, 0);
@@ -95,27 +117,33 @@ export default function PlateCapture({ onDetected, label }) {
       />
 
       {!photo && (
-        <button
-          type="button"
-          onClick={() => fileInputRef.current.click()}
-          className="btn"
-          style={{
-            width: "100%",
-            border: "1px solid var(--border)",
-            background: "var(--surface-muted)",
-            color: "var(--muted)",
-            padding: "26px 16px",
-            flexDirection: "column",
-            gap: 8,
-          }}
-        >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-            <path d="M4 16l4.5-6 3 4 2.5-3L20 16" />
-            <rect x="3" y="5" width="18" height="14" rx="2" />
-            <circle cx="8" cy="9" r="1.2" fill="currentColor" />
-          </svg>
-          <span style={{ fontSize: 13.5, fontWeight: 600 }}>Upload / capture plate photo</span>
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current.click()}
+            className="btn"
+            style={{
+              width: "100%",
+              border: "1px solid var(--border)",
+              background: "var(--surface-muted)",
+              color: "var(--muted)",
+              padding: "26px 16px",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M4 16l4.5-6 3 4 2.5-3L20 16" />
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <circle cx="8" cy="9" r="1.2" fill="currentColor" />
+            </svg>
+            <span style={{ fontSize: 13.5, fontWeight: 600 }}>Upload / capture plate photo</span>
+          </button>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 500 }}>
+            <span>💡</span>
+            <span>For best results, center the license plate in the frame.</span>
+          </div>
+        </div>
       )}
 
       {photo && (

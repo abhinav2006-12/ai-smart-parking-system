@@ -8,6 +8,7 @@
   --accent:#2F4858;
   --accent-hover:#243946;
   --accent-soft:#EAEEF0;
+  --accent-rgb:47,72,88;
   --success:#1F7A4D;
   --success-soft:#E9F5EE;
   --warning:#A16207;
@@ -18,6 +19,38 @@
   --radius-sm:7px;
   --shadow-sm:0 1px 2px rgba(16,24,32,.04);
   --shadow-md:0 4px 14px rgba(16,24,32,.06);
+
+  /* decorative background blobs (hero/login) */
+  --bg-blob-1:rgba(47,72,88,.10);
+  --bg-blob-2:rgba(31,122,77,.08);
+  --bg-blob-3:rgba(161,98,7,.07);
+  --bg-grid-line:rgba(16,24,32,.035);
+}
+
+[data-theme="dark"]{
+  --bg:#0F1216;
+  --surface:#171B21;
+  --surface-muted:#1D2127;
+  --ink:#EDEEF0;
+  --muted:#8B9099;
+  --border:#2A2F37;
+  --accent:#5B9BB5;
+  --accent-hover:#76AFC6;
+  --accent-soft:#1E2C33;
+  --accent-rgb:91,155,181;
+  --success:#3FCB87;
+  --success-soft:#16261E;
+  --warning:#E0A93B;
+  --warning-soft:#2B2316;
+  --danger:#E2685A;
+  --danger-soft:#2B1B19;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:0 8px 24px rgba(0,0,0,.45);
+
+  --bg-blob-1:rgba(91,155,181,.16);
+  --bg-blob-2:rgba(63,203,135,.10);
+  --bg-blob-3:rgba(224,169,59,.08);
+  --bg-grid-line:rgba(255,255,255,.035);
 }
 
 *{box-sizing:border-box;}
@@ -28,8 +61,74 @@ body{
   font-family:'Inter',sans-serif;
   -webkit-font-smoothing:antialiased;
   min-height:100vh;
+  transition:background-color .25s ease, color .25s ease;
 }
 #root{min-height:100vh;}
+
+/* Decorative ambient background: soft blurred color blobs + faint grid.
+   Pure CSS, no external images — keeps the app offline-capable. */
+.ambient-bg{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.ambient-bg::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(var(--bg-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-line) 1px, transparent 1px);
+  background-size:42px 42px;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 90%);
+}
+.ambient-bg .blob{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(60px);
+  opacity:.9;
+}
+.ambient-bg .blob-1{
+  width:480px;height:480px;
+  top:-160px; left:-120px;
+  background:var(--bg-blob-1);
+}
+.ambient-bg .blob-2{
+  width:420px;height:420px;
+  top:30%; right:-160px;
+  background:var(--bg-blob-2);
+}
+.ambient-bg .blob-3{
+  width:380px;height:380px;
+  bottom:-180px; left:30%;
+  background:var(--bg-blob-3);
+}
+.app-content{
+  position:relative;
+  z-index:1;
+}
+
+/* theme toggle switch */
+.theme-toggle{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:34px;
+  height:34px;
+  border-radius:9px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--muted);
+  cursor:pointer;
+  transition:background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+}
+.theme-toggle:hover{
+  color:var(--accent);
+  border-color:var(--accent);
+}
+.theme-toggle:active{transform:scale(.94);}
 h1,h2,h3,h4,.display{font-family:'Inter',sans-serif; margin:0; letter-spacing:-0.01em;}
 .mono{font-family:'Roboto Mono',monospace;}
 button{font-family:inherit;cursor:pointer;}
@@ -58,12 +157,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   *{animation-duration:0.001ms !important; animation-iteration-count:1 !important;}
 }
 
-/* flat surface card */
+/* surface card */
 .card{
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:var(--radius);
   color:var(--ink);
+  transition:background-color .2s ease, border-color .2s ease, color .2s ease, transform .15s ease, box-shadow .2s ease;
+}
+.card-hover:hover{
+  transform:translateY(-2px);
+  border-color:rgba(var(--accent-rgb),.35);
+  box-shadow:var(--shadow-md);
 }
 
 input[type=text], input[type=number], select{
@@ -74,6 +179,7 @@ input[type=text], input[type=number], select{
   background:var(--surface);
   font-size:14px;
   color:var(--ink);
+  transition:background-color .2s ease, border-color .15s ease, color .2s ease;
 }
 input[type=text]:focus, input[type=number]:focus, select:focus{
   border-color:var(--accent);

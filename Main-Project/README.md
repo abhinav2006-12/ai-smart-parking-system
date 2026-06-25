@@ -51,7 +51,18 @@ src/
 
 ## Admin access
 
-Demo PIN: `1234` (hardcoded in `src/components/AdminLogin.jsx`). Replace with real authentication before any production use.
+The admin dashboard has no link anywhere in the UI — it's only reachable by visiting `/admin` directly in the browser (e.g. `http://localhost:5173/admin` in dev, or `yoursite.com/admin` once deployed).
+
+Demo PIN: `1234` (hardcoded in `src/components/AdminLogin.jsx`). Replace with real authentication before any production use — a hidden URL is obscurity, not security.
+
+If you deploy to a static host, make sure deep-links to `/admin` don't 404 on a hard refresh:
+- **Vercel** — `vercel.json` (included) rewrites all paths to `index.html`.
+- **Netlify** — `public/_redirects` (included) does the same.
+- **GitHub Pages** — doesn't support rewrites natively; either use a `404.html` that redirects to `index.html`, or stick to in-app navigation (no hard refresh on `/admin`).
+
+## Theme
+
+Light/dark mode toggle in the top-right corner, persisted in `localStorage` and defaulting to the OS-level preference on first visit.
 
 ## Notes on plate detection
 

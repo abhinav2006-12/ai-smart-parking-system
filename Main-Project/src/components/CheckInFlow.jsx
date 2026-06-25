@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import PlateCapture from "./PlateCapture";
 import { uid, fmtDateTime } from "../lib/format";
 import { isLikelyValidIndianPlate } from "../lib/plate";
+import PriceChartOverlay from "./PriceChartOverlay";
 
 const VEHICLE_TYPES = [
   { key: "standard", label: "Standard" },
@@ -15,6 +16,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   const [photo, setPhoto] = useState(null);
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState("");
+  const [showPriceChart, setShowPriceChart] = useState(false);
 
   const slotsByType = store.settings.slotsByType;
   const occupiedByType = useMemo(() => {
@@ -109,7 +111,33 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
       <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>Select type, capture the plate, confirm the number.</p>
 
       <div style={{ marginTop: 20 }}>
-        <label>Vehicle Type</label>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+          <label style={{ marginBottom: 0 }}>Vehicle Type</label>
+          <button
+            type="button"
+            onClick={() => setShowPriceChart(true)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--accent)",
+              fontSize: "12px",
+              fontWeight: "600",
+              cursor: "pointer",
+              padding: 0,
+              textDecoration: "underline",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="20" x2="18" y2="10" />
+              <line x1="12" y1="20" x2="12" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
+            View Rates Chart
+          </button>
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {VEHICLE_TYPES.map((t) => {
             const avail = availableForType(t.key);
@@ -175,6 +203,8 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
       <button onClick={handleSubmit} className="btn btn-primary" style={{ width: "100%", marginTop: 22 }}>
         Confirm Check-In
       </button>
+
+      <PriceChartOverlay isOpen={showPriceChart} onClose={() => setShowPriceChart(false)} />
     </div>
   );
 }

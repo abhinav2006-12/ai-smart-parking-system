@@ -1,4 +1,6 @@
-export default function HomeScreen({ onAdmin, onGuest }) {
+import ThemeToggle from "./ThemeToggle";
+
+export default function HomeScreen({ onGuest, theme, onToggleTheme }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <div
@@ -16,7 +18,7 @@ export default function HomeScreen({ onAdmin, onGuest }) {
               width: 28,
               height: 28,
               borderRadius: 7,
-              background: "var(--accent)",
+              background: "linear-gradient(135deg, var(--accent), var(--accent-hover))",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -31,17 +33,39 @@ export default function HomeScreen({ onAdmin, onGuest }) {
             ParkPilot
           </span>
         </div>
-        <span style={{ color: "var(--muted)", fontSize: 12.5 }}>AI Smart Parking System</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{ color: "var(--muted)", fontSize: 12.5 }}>AI Smart Parking System</span>
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        </div>
       </div>
 
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
-        <div className="fade-up" style={{ maxWidth: 760, width: "100%" }}>
+        <div className="fade-up" style={{ maxWidth: 560, width: "100%" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "5px 12px",
+              borderRadius: 20,
+              background: "var(--accent-soft)",
+              color: "var(--accent)",
+              fontSize: 12,
+              fontWeight: 600,
+              margin: "0 auto 18px",
+            }}
+            className="badge-row"
+          >
+            <span className="pulse" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} />
+            Live gate counter
+          </div>
+
           <h1
             className="display"
             style={{
-              fontSize: "clamp(28px,4vw,42px)",
+              fontSize: "clamp(30px,4.5vw,46px)",
               fontWeight: 700,
-              lineHeight: 1.15,
+              lineHeight: 1.12,
               textAlign: "center",
             }}
           >
@@ -50,35 +74,44 @@ export default function HomeScreen({ onAdmin, onGuest }) {
           <p
             style={{
               color: "var(--muted)",
-              fontSize: 15,
-              marginTop: 12,
+              fontSize: 15.5,
+              marginTop: 14,
               textAlign: "center",
-              maxWidth: 480,
+              maxWidth: 460,
               marginLeft: "auto",
               marginRight: "auto",
-              lineHeight: 1.6,
+              lineHeight: 1.65,
             }}
           >
-            Check vehicles in and out with a photo, auto-detect the number plate, and track occupancy and revenue from one dashboard.
+            Check vehicles in and out with a photo, auto-detect the number plate, and pay instantly with a UPI QR code.
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 36 }}>
-            <button onClick={onGuest} className="card" style={{ textAlign: "left", padding: "24px", cursor: "pointer", boxShadow: "var(--shadow-sm)" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", letterSpacing: ".02em" }}>GATE COUNTER</div>
-              <h2 className="display" style={{ fontSize: 20, marginTop: 8, fontWeight: 600 }}>
-                Guest / Guard
-              </h2>
-              <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 6, lineHeight: 1.5 }}>Check a vehicle in or out. No login needed.</p>
-              <div style={{ marginTop: 16, fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Open counter →</div>
-            </button>
-
-            <button onClick={onAdmin} className="card" style={{ textAlign: "left", padding: "24px", cursor: "pointer", boxShadow: "var(--shadow-sm)" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", letterSpacing: ".02em" }}>BACK OFFICE</div>
-              <h2 className="display" style={{ fontSize: 20, marginTop: 8, fontWeight: 600 }}>
-                Admin
-              </h2>
-              <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 6, lineHeight: 1.5 }}>Dashboard, fares, vehicle logs, revenue.</p>
-              <div style={{ marginTop: 16, fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Login →</div>
+          <div style={{ marginTop: 40, display: "flex", justifyContent: "center" }}>
+            <button
+              onClick={onGuest}
+              className="card card-hover btn-primary"
+              style={{
+                textAlign: "center",
+                padding: "20px 40px",
+                cursor: "pointer",
+                boxShadow: "var(--shadow-md)",
+                border: "none",
+                color: "#fff",
+                background: "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span>
+                <span className="display" style={{ fontSize: 16, fontWeight: 600, display: "block" }}>
+                  Open Gate Counter
+                </span>
+                <span style={{ fontSize: 12.5, opacity: 0.85 }}>Check a vehicle in or out — no login needed</span>
+              </span>
             </button>
           </div>
         </div>
