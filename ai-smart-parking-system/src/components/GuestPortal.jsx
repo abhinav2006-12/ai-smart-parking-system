@@ -31,11 +31,11 @@ export default function GuestPortal({
   // AI Scan Simulation State
   const [isScanning, setIsScanning] = useState(false);
   const [ocrText, setOcrText] = useState('');
-  const [scanSuccess, setScanSuccess] = useState(false);
+  const [scanSuccess, se ScanSuccess] = useState(false);
   const [hasAutoScanned, setHasAutoScanned] = useState(false);
   const [cameraError, setCameraError] = useState('');
 
-  // Camera & Canvas Refs
+ 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
