@@ -1,5 +1,5 @@
 {
-  "name": "ai-smart-parking-system",
+  "name": "parkpilot-react",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "recharts": "^3.9.0",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
