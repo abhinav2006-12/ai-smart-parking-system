@@ -31,7 +31,7 @@ export default function GuestPortal({
   // AI Scan Simulation State
   const [isScanning, setIsScanning] = useState(false);
   const [ocrText, setOcrText] = useState('');
-  const [scanSuccess, se ScanSuccess] = useState(false);
+  const [scanSuccess, setScanSuccess] = useState(false);
   const [hasAutoScanned, setHasAutoScanned] = useState(false);
   const [cameraError, setCameraError] = useState('');
 
