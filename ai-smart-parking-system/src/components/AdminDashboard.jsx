@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import InteractiveMap from './InteractiveMap';
 import { 
   Tools, 
   CheckOut, 
@@ -19,6 +20,7 @@ import {
 export default function AdminDashboard({ 
   parkings, 
   slots, 
+  blueprint,
   onSimulateCheckIn, 
   onSimulateCheckOut,
   revenueToday,
@@ -522,124 +524,22 @@ export default function AdminDashboard({
           </div>
         </div>
 
-        {/* Right Side: Slot Map */}
+        {/* Right Side: Visual Space Map */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', position: 'sticky', top: '90px' }}>
           <div className="section-title">
             <Logo size={18} style={{ color: 'var(--primary)' }} />
-            <span>Parking Lot Space Map</span>
+            <span>Interactive Parking Blueprint Map</span>
             <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-secondary)' }}>
               ({activeParkingCount}/60 Occupied)
             </span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', marginBottom: '14px', fontSize: '11px', background: 'var(--bg-secondary)', padding: '10px 8px', borderRadius: '12px', boxShadow: 'var(--clay-shadow-inset)', gap: '8px' }}>
-            <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '8px', height: '8px', backgroundColor: 'var(--success)', borderRadius: '50%' }}></span> Empty
-            </span>
-            <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '8px', height: '8px', backgroundColor: 'var(--danger)', borderRadius: '50%' }}></span> Occupied
-            </span>
-            <span style={{ color: 'var(--cyan-hover)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <EV size={10} /> EV Bay
-            </span>
-            <span style={{ color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Disabled size={10} /> Disabled
-            </span>
-          </div>
-
-          <div className="slot-map">
-            {slots.map(slot => {
-              const activeParking = parkings.find(p => p.slotId === slot.id && p.status === 'active');
-              const isOccupied = slot.isOccupied;
-              
-              let slotClass = `slot-item ${isOccupied ? 'occupied' : 'empty'}`;
-              
-              return (
-                <div 
-                  key={slot.id} 
-                  className={slotClass}
-                  style={{
-                    borderBottomColor: slot.type === 'ev' ? 'var(--cyan)' : slot.type === 'disabled' ? '#2563eb' : ''
-                  }}
-                  onMouseEnter={() => setHoveredSlot({
-                    id: slot.id,
-                    type: slot.type,
-                    occupied: isOccupied,
-                    vehicle: activeParking ? activeParking.plateNumber : null,
-                    time: activeParking ? new Date(activeParking.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
-                  })}
-                  onMouseLeave={() => setHoveredSlot(null)}
-                >
-                  <span>{slot.id}</span>
-                  
-                  {slot.type === 'ev' && <span className="slot-badge ev"><EV size={8} /></span>}
-                  {slot.type === 'disabled' && <span className="slot-badge disabled"><Disabled size={8} /></span>}
-                  
-                  {isOccupied && activeParking && (
-                    <span className="slot-plate">{activeParking.plateNumber}</span>
-                  )}
-                  
-                  {isOccupied && (
-                    <button 
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        opacity: 0,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => {
-                        if (confirm(`Check-out vehicle ${activeParking.plateNumber} from slot ${slot.id}?`)) {
-                          onSimulateCheckOut(activeParking.plateNumber);
-                        }
-                      }}
-                      title="Click to quickly checkout"
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Quick slot inspector footer */}
-          <div style={{
-            marginTop: '14px',
-            padding: '14px',
-            background: 'var(--bg-secondary)',
-            borderRadius: '14px',
-            fontSize: '12px',
-            textAlign: 'left',
-            minHeight: '62px',
-            boxShadow: 'var(--clay-shadow-inset)'
-          }}>
-            {hoveredSlot && hoveredSlot.id ? (
-              <div>
-                <div style={{ fontWeight: 'bold', color: '#fff', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Space {hoveredSlot.id} [{hoveredSlot.type.toUpperCase()}]</span>
-                  <span style={{ color: hoveredSlot.occupied ? '#f87171' : 'var(--success-hover)' }}>
-                    {hoveredSlot.occupied ? 'Occupied' : 'Available'}
-                  </span>
-                </div>
-                {hoveredSlot.occupied && hoveredSlot.vehicle && (
-                  <div style={{ marginTop: '6px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '12px' }}>
-                    Plate: <strong style={{ color: 'var(--text-primary)' }}>{hoveredSlot.vehicle}</strong> | In since: {hoveredSlot.time}
-                  </div>
-                )}
-                {!hoveredSlot.occupied && (
-                  <div style={{ marginTop: '4px', color: 'var(--text-muted)' }}>
-                    Rate: {hoveredSlot.type === 'ev' ? '₹60.00/hr (Inc. Charging)' : hoveredSlot.type === 'disabled' ? '₹20.00/hr' : '₹40.00/hr'}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'center', gap: '6px' }}>
-                <Search size={12} />
-                <span>Hover over a slot for details or click occupied to release</span>
-              </div>
-            )}
-          </div>
+          <InteractiveMap 
+            blueprint={blueprint}
+            slots={slots}
+            parkings={parkings}
+            adminCheckout={onSimulateCheckOut}
+          />
         </div>
       </div>
     </div>

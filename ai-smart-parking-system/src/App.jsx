@@ -3,7 +3,8 @@ import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
 import VehicleList from './components/VehicleList';
 import GuestPortal from './components/GuestPortal';
-import { Logo, Guest, Admin, Dashboard, Logs } from './components/Icons';
+import BlueprintEditor from './components/BlueprintEditor';
+import { Logo, Guest, Admin, Dashboard, Logs, Map } from './components/Icons';
 
 // Seed initial dataset if storage is empty
 const INITIAL_SLOTS = [];
@@ -165,14 +166,97 @@ const INITIAL_LOGS = [
   }
 ];
 
+const generateDefaultBlueprint = () => {
+  const rows = 10;
+  const cols = 12;
+  const grid = Array(rows).fill(null).map(() => Array(cols).fill(null).map(() => ({ type: 'floor', slotId: null })));
+
+  // Entry Gate at (0, 0) and (9, 11)
+  grid[0][0] = { type: 'gate', slotId: null };
+  grid[9][11] = { type: 'gate', slotId: null };
+
+  // Driveways / roads loop
+  for (let i = 0; i < 12; i++) {
+    grid[0][i] = { type: 'road', slotId: null };
+    grid[9][i] = { type: 'road', slotId: null };
+  }
+  for (let i = 0; i < 10; i++) {
+    grid[i][0] = { type: 'road', slotId: null };
+    grid[i][11] = { type: 'road', slotId: null };
+  }
+  for (let i = 2; i <= 7; i++) {
+    grid[i][5] = { type: 'road', slotId: null };
+    grid[i][6] = { type: 'road', slotId: null };
+  }
+
+  // Walls / Pillars in the center
+  grid[3][3] = { type: 'wall', slotId: null };
+  grid[3][8] = { type: 'wall', slotId: null };
+  grid[6][3] = { type: 'wall', slotId: null };
+  grid[6][8] = { type: 'wall', slotId: null };
+
+  // Slots mapping
+  const slotsMapping = [
+    { r: 1, c: 1, type: 'C', idx: 1 },
+    { r: 1, c: 2, type: 'C', idx: 2 },
+    { r: 1, c: 3, type: 'C', idx: 3 },
+    { r: 1, c: 4, type: 'C', idx: 4 },
+    
+    { r: 1, c: 7, type: 'B', idx: 1 },
+    { r: 1, c: 8, type: 'B', idx: 2 },
+    { r: 1, c: 9, type: 'B', idx: 3 },
+    { r: 1, c: 10, type: 'B', idx: 4 },
+
+    { r: 2, c: 1, type: 'A', idx: 1 },
+    { r: 2, c: 2, type: 'A', idx: 2 },
+    { r: 2, c: 3, type: 'A', idx: 3 },
+    { r: 2, c: 4, type: 'A', idx: 4 },
+    { r: 2, c: 7, type: 'A', idx: 5 },
+    { r: 2, c: 8, type: 'A', idx: 6 },
+    { r: 2, c: 9, type: 'A', idx: 7 },
+    { r: 2, c: 10, type: 'A', idx: 8 },
+
+    { r: 4, c: 2, type: 'A', idx: 9 },
+    { r: 4, c: 3, type: 'A', idx: 10 },
+    { r: 4, c: 4, type: 'A', idx: 11 },
+    { r: 4, c: 7, type: 'A', idx: 12 },
+    { r: 4, c: 8, type: 'A', idx: 13 },
+    { r: 4, c: 9, type: 'A', idx: 14 },
+
+    { r: 7, c: 2, type: 'A', idx: 15 },
+    { r: 7, c: 3, type: 'A', idx: 16 },
+    { r: 7, c: 4, type: 'A', idx: 17 },
+    { r: 7, c: 7, type: 'A', idx: 18 },
+    { r: 7, c: 8, type: 'A', idx: 19 },
+    { r: 7, c: 9, type: 'A', idx: 20 },
+
+    { r: 8, c: 1, type: 'A', idx: 21 },
+    { r: 8, c: 2, type: 'A', idx: 22 },
+    { r: 8, c: 3, type: 'A', idx: 23 },
+    { r: 8, c: 4, type: 'A', idx: 24 },
+    
+    { r: 8, c: 7, type: 'B', idx: 5 },
+    { r: 8, c: 8, type: 'B', idx: 6 },
+    { r: 8, c: 9, type: 'B', idx: 7 },
+    { r: 8, c: 10, type: 'B', idx: 8 }
+  ];
+
+  slotsMapping.forEach(s => {
+    grid[s.r][s.c] = { type: 'slot', slotId: `${s.type}${s.idx}` };
+  });
+
+  return grid;
+};
+
 export default function App() {
   const [view, setView] = useState('guest'); // 'guest' | 'admin'
-  const [adminSubView, setAdminSubView] = useState('dashboard'); // 'dashboard' | 'vehicles'
+  const [adminSubView, setAdminSubView] = useState('dashboard'); // 'dashboard' | 'vehicles' | 'blueprint'
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Core system databases
   const [slots, setSlots] = useState([]);
   const [parkings, setParkings] = useState([]);
+  const [blueprint, setBlueprint] = useState([]);
   const [revenueToday, setRevenueToday] = useState(0);
   const [revenueYesterday, setRevenueYesterday] = useState(0);
 
@@ -180,9 +264,11 @@ export default function App() {
   useEffect(() => {
     const storedSlots = localStorage.getItem('ai_parking_slots');
     const storedLogs = localStorage.getItem('ai_parking_logs');
+    const storedBlueprint = localStorage.getItem('ai_parking_blueprint');
 
     let loadedSlots = [];
     let loadedLogs = [];
+    let loadedBlueprint = [];
 
     if (storedSlots && storedLogs) {
       loadedSlots = JSON.parse(storedSlots);
@@ -204,8 +290,16 @@ export default function App() {
       localStorage.setItem('ai_parking_logs', JSON.stringify(loadedLogs));
     }
 
+    if (storedBlueprint) {
+      loadedBlueprint = JSON.parse(storedBlueprint);
+    } else {
+      loadedBlueprint = generateDefaultBlueprint();
+      localStorage.setItem('ai_parking_blueprint', JSON.stringify(loadedBlueprint));
+    }
+
     setSlots(loadedSlots);
     setParkings(loadedLogs);
+    setBlueprint(loadedBlueprint);
   }, []);
 
   // Compute revenues dynamically whenever parkings state changes
@@ -367,6 +461,11 @@ export default function App() {
     setIsLoggedIn(false);
   };
 
+  const handleSaveBlueprint = (newBlueprint) => {
+    setBlueprint(newBlueprint);
+    localStorage.setItem('ai_parking_blueprint', JSON.stringify(newBlueprint));
+  };
+
   return (
     <>
       {/* Navigation Header */}
@@ -437,6 +536,7 @@ export default function App() {
           <GuestPortal 
             parkings={parkings}
             slots={slots}
+            blueprint={blueprint}
             onCheckIn={handleCheckIn}
             onCheckOutSuccess={handleCheckOutSuccess}
           />
@@ -447,7 +547,7 @@ export default function App() {
           ) : (
             <div>
               {/* Admin Inner Menu */}
-              <div className="tab-nav">
+              <div className="tab-nav" style={{ maxWidth: '640px' }}>
                 <div 
                   className={`tab-item ${adminSubView === 'dashboard' ? 'active' : ''}`}
                   onClick={() => setAdminSubView('dashboard')}
@@ -462,6 +562,13 @@ export default function App() {
                   <Logs size={18} />
                   <span>Vehicle Directory</span>
                 </div>
+                <div 
+                  className={`tab-item ${adminSubView === 'blueprint' ? 'active' : ''}`}
+                  onClick={() => setAdminSubView('blueprint')}
+                >
+                  <Map size={18} />
+                  <span>Blueprint Editor</span>
+                </div>
               </div>
 
               {/* View Selection */}
@@ -469,15 +576,22 @@ export default function App() {
                 <AdminDashboard 
                   parkings={parkings}
                   slots={slots}
+                  blueprint={blueprint}
                   onSimulateCheckIn={handleSimulateCheckIn}
                   onSimulateCheckOut={() => handleSimulateCheckOut(null)}
                   revenueToday={revenueToday}
                   revenueYesterday={revenueYesterday}
                 />
-              ) : (
+              ) : adminSubView === 'vehicles' ? (
                 <VehicleList 
                   parkings={parkings}
                   onCheckout={(plate) => handleSimulateCheckOut(plate)}
+                />
+              ) : (
+                <BlueprintEditor 
+                  blueprint={blueprint}
+                  slots={slots}
+                  onSaveBlueprint={handleSaveBlueprint}
                 />
               )}
             </div>

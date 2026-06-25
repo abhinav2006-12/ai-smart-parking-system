@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Tesseract from 'tesseract.js';
+import InteractiveMap from './InteractiveMap';
 import { 
   CheckIn, 
   CheckOut, 
@@ -18,10 +19,12 @@ import {
 export default function GuestPortal({ 
   parkings, 
   slots, 
+  blueprint,
   onCheckIn, 
   onCheckOutSuccess 
 }) {
   const [activeTab, setActiveTab] = useState('checkin');
+  const [selectedSlotId, setSelectedSlotId] = useState(null);
   
   // Check-In Form State
   const [plateNumber, setPlateNumber] = useState('');
@@ -182,6 +185,7 @@ export default function GuestPortal({
         entryTime: result.parking.entryTime,
         slotType: result.parking.slotType
       });
+      setSelectedSlotId(result.parking.slotId);
       // Reset form fields
       setPlateNumber('');
       setOcrText('');
@@ -342,7 +346,6 @@ export default function GuestPortal({
                   style={{ textTransform: 'uppercase', fontSize: '18px', fontWeight: '700', fontFamily: 'var(--font-title)' }}
                   value={plateNumber}
                   onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-                  disabled={isScanning}
                 />
               </div>
 
@@ -509,6 +512,35 @@ export default function GuestPortal({
               </div>
             </div>
           </div>
+
+          {/* Live Floor Map Section */}
+          <div className="card" style={{ gridColumn: 'span 2', marginTop: '24px' }}>
+            <div className="section-title">
+              <Car size={18} style={{ color: 'var(--primary)' }} />
+              <span>Interactive Parking Space Finder & Wayfinding Guide</span>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '28px', alignItems: 'center' }}>
+              <InteractiveMap 
+                blueprint={blueprint}
+                slots={slots}
+                parkings={parkings}
+                highlightedSlotId={selectedSlotId}
+                onSlotClick={(slotId) => setSelectedSlotId(slotId)}
+                isGuestView={true}
+              />
+              <div style={{ textAlign: 'left' }}>
+                <h4 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-primary)', fontFamily: 'var(--font-title)' }}>
+                  How to use the Wayfinder:
+                </h4>
+                <ul style={{ paddingLeft: '20px', color: 'var(--text-secondary)', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: '1.5' }}>
+                  <li>Click on any empty slot on the map to calculate and highlight the driving path from the nearest entrance gate.</li>
+                  <li>Green slots are available, Red slots are occupied by vehicles.</li>
+                  <li>After check-in, your ticket will display a direct routing guide to your assigned parking slot.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -622,6 +654,20 @@ export default function GuestPortal({
                   </div>
                 </div>
 
+                {/* Visual Map locator */}
+                <div className="card wayfinding-card-glow" style={{ padding: '16px', marginBottom: '20px', background: 'var(--bg-secondary)' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--cyan-hover)', marginBottom: '10px', textAlign: 'left' }}>
+                    📍 Locate Your Vehicle in Slot {checkoutSession.slotId}
+                  </div>
+                  <InteractiveMap 
+                    blueprint={blueprint}
+                    slots={slots}
+                    parkings={parkings}
+                    highlightedSlotId={checkoutSession.slotId}
+                    isGuestView={true}
+                  />
+                </div>
+
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -705,6 +751,20 @@ export default function GuestPortal({
               </div>
               <div style={{ textAlign: 'center', fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px' }}>
                 SMART-SYS-{ticketPrintout.slotId}-{ticketPrintout.plate}
+              </div>
+
+              {/* Animated Wayfinding map inside the ticket */}
+              <div style={{ marginTop: '16px', background: 'var(--bg-main)', padding: '10px', borderRadius: '12px', boxShadow: 'var(--clay-shadow-inset)' }}>
+                <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--cyan-hover)', marginBottom: '6px', textAlign: 'center', fontFamily: 'var(--font-title)' }}>
+                  🚘 WAYFINDING ROUTE FOR {ticketPrintout.slotId}
+                </div>
+                <InteractiveMap 
+                  blueprint={blueprint}
+                  slots={slots}
+                  parkings={parkings}
+                  highlightedSlotId={ticketPrintout.slotId}
+                  isGuestView={true}
+                />
               </div>
             </div>
 
