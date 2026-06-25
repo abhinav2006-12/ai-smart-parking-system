@@ -1,6 +1,9 @@
 import { useState, useRef } from "react";
 import { normalizeIndianPlate, isLikelyValidIndianPlate } from "../lib/plate";
 
+// Keep the YOLOv8 session in global scope so it stays hot between component mounts
+let ortSession = null;
+
 export default function PlateCapture({ onDetected, label }) {
   const [photo, setPhoto] = useState(null); // dataURL
   const [processedPreview, setProcessedPreview] = useState(null);
@@ -17,6 +20,118 @@ export default function PlateCapture({ onDetected, label }) {
       runOCR(e.target.result);
     };
     reader.readAsDataURL(file);
+  };
+
+  const loadYoloModel = async () => {
+    if (ortSession) return ortSession;
+    try {
+      // Ensure ONNX runtime WASM assets are pulled from CDN matching the loaded script tag
+      window.ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.1/dist/";
+      
+      // Load a pre-trained YOLOv8 license plate detection model (~6MB nano model)
+      const modelUrl = "https://huggingface.co/ml-debi/yolov8-license-plate-detection/resolve/main/best.onnx";
+      ortSession = await window.ort.InferenceSession.create(modelUrl, {
+        executionProviders: ["wasm"],
+      });
+      return ortSession;
+    } catch (err) {
+      console.error("Failed to load YOLO model:", err);
+      throw err;
+    }
+  };
+
+  const calculateIoU = (box1, box2) => {
+    const x1_1 = box1.x1, y1_1 = box1.y1, x2_1 = box1.x1 + box1.w, y2_1 = box1.y1 + box1.h;
+    const x1_2 = box2.x1, y1_2 = box2.y1, x2_2 = box2.x1 + box2.w, y2_2 = box2.y1 + box2.h;
+    
+    const xi1 = Math.max(x1_1, x1_2);
+    const yi1 = Math.max(y1_1, y1_2);
+    const xi2 = Math.min(x2_1, x2_2);
+    const yi2 = Math.min(y2_1, y2_2);
+    
+    const interWidth = Math.max(0, xi2 - xi1);
+    const interHeight = Math.max(0, yi2 - yi1);
+    const interArea = interWidth * interHeight;
+    
+    const box1Area = box1.w * box1.h;
+    const box2Area = box2.w * box2.h;
+    const unionArea = box1Area + box2Area - interArea;
+    
+    return unionArea > 0 ? interArea / unionArea : 0;
+  };
+
+  const detectPlateWithYolo = async (imgEl) => {
+    const session = await loadYoloModel();
+    const inputW = 640;
+    const inputH = 640;
+    
+    const canvas = document.createElement("canvas");
+    canvas.width = inputW;
+    canvas.height = inputH;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(imgEl, 0, 0, inputW, inputH);
+    
+    const imgData = ctx.getImageData(0, 0, inputW, inputH);
+    const data = imgData.data;
+    
+    // Normalization & CHW conversion (standard YOLOv8 input)
+    const floatData = new Float32Array(3 * inputW * inputH);
+    const channelSize = inputW * inputH;
+    for (let i = 0; i < channelSize; i++) {
+      floatData[i] = data[i * 4] / 255.0;                   // R
+      floatData[channelSize + i] = data[i * 4 + 1] / 255.0;  // G
+      floatData[2 * channelSize + i] = data[i * 4 + 2] / 255.0; // B
+    }
+    
+    const inputTensor = new window.ort.Tensor("float32", floatData, [1, 3, inputW, inputH]);
+    
+    const feeds = {};
+    feeds[session.inputNames[0]] = inputTensor;
+    const results = await session.run(feeds);
+    const outputName = session.outputNames[0];
+    const outputTensor = results[outputName];
+    const outputData = outputTensor.data; // Shape [1, 5, 8400]
+    
+    const numClasses = outputTensor.dims[1] - 4; 
+    const numAnchors = outputTensor.dims[2]; 
+    
+    let boxes = [];
+    for (let i = 0; i < numAnchors; i++) {
+      let maxScore = -1;
+      for (let c = 0; c < numClasses; c++) {
+        const score = outputData[(4 + c) * numAnchors + i];
+        if (score > maxScore) maxScore = score;
+      }
+      
+      if (maxScore > 0.45) { 
+        const xc = outputData[0 * numAnchors + i];
+        const yc = outputData[1 * numAnchors + i];
+        const w = outputData[2 * numAnchors + i];
+        const h = outputData[3 * numAnchors + i];
+        
+        const x1 = xc - w / 2;
+        const y1 = yc - h / 2;
+        
+        boxes.push({
+          x1: x1,
+          y1: y1,
+          w: w,
+          h: h,
+          score: maxScore
+        });
+      }
+    }
+    
+    // Sort and run Non-Maximum Suppression (NMS)
+    boxes.sort((a, b) => b.score - a.score);
+    let picked = [];
+    while (boxes.length > 0) {
+      const current = boxes.shift();
+      picked.push(current);
+      boxes = boxes.filter(box => calculateIoU(current, box) < 0.45);
+    }
+    
+    return picked;
   };
 
   // Adaptive binarization using Bradley-Roth algorithm (integral image)
@@ -128,7 +243,6 @@ export default function PlateCapture({ onDetected, label }) {
 
   const runOCR = async (dataUrl) => {
     setStatus("processing");
-    setStatusMessage("Reading plate (pass 1/3)…");
     try {
       const img = new Image();
       img.src = dataUrl;
@@ -138,13 +252,66 @@ export default function PlateCapture({ onDetected, label }) {
 
       const { default: Tesseract } = await import("tesseract.js");
 
-      // Pass 1: Cropped & Adaptively Thresholded (Ideal case)
+      // 1. YOLOv8 Plate Detection (Primary Route)
+      let yoloCroppedUrl = null;
+      try {
+        setStatusMessage("Detecting plate (YOLOv8 AI)…");
+        const detections = await detectPlateWithYolo(img);
+        
+        if (detections.length > 0) {
+          const bestBox = detections[0];
+          const scaleX = img.naturalWidth / 640;
+          const scaleY = img.naturalHeight / 640;
+          
+          let origX = Math.max(0, bestBox.x1 * scaleX);
+          let origY = Math.max(0, bestBox.y1 * scaleY);
+          let origW = Math.min(img.naturalWidth - origX, bestBox.w * scaleX);
+          let origH = Math.min(img.naturalHeight - origY, bestBox.h * scaleY);
+
+          const canvas = canvasRef.current;
+          // Scale crop region to upscale for higher OCR accuracy
+          const targetW = Math.min(1200, origW * 2.5);
+          const scale = targetW / origW;
+          canvas.width = targetW;
+          canvas.height = origH * scale;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, origX, origY, origW, origH, 0, 0, canvas.width, canvas.height);
+
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          adaptiveThreshold(imgData.data, canvas.width, canvas.height);
+          ctx.putImageData(imgData, 0, 0);
+
+          yoloCroppedUrl = canvas.toDataURL("image/png");
+          setProcessedPreview(yoloCroppedUrl);
+
+          setStatusMessage("Reading plate text (YOLOv8 crop)…");
+          const result = await Tesseract.recognize(yoloCroppedUrl, "eng", {
+            tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+            tessedit_pageseg_mode: "6", // SINGLE_BLOCK
+          });
+          
+          const text = result.data.text || "";
+          const normalized = normalizeIndianPlate(text);
+
+          if (isLikelyValidIndianPlate(normalized)) {
+            setStatus("done");
+            onDetected(normalized, dataUrl);
+            return;
+          }
+        }
+      } catch (yoloErr) {
+        console.warn("YOLOv8 skipped, using default Tesseract fallback:", yoloErr);
+      }
+
+      // 2. Fallback Pass 1: Center Crop + Adaptive Binarization
+      setStatusMessage("Reading plate (pass 1/3)…");
       const processedUrlCropped = preprocess(img, true);
       setProcessedPreview(processedUrlCropped);
 
       const result1 = await Tesseract.recognize(processedUrlCropped, "eng", {
         tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-        tessedit_pageseg_mode: "6", // SINGLE_BLOCK (assume a single uniform block of text)
+        tessedit_pageseg_mode: "6", // SINGLE_BLOCK
       });
       const text1 = result1.data.text || "";
       let normalized = normalizeIndianPlate(text1);
@@ -155,14 +322,14 @@ export default function PlateCapture({ onDetected, label }) {
         return;
       }
 
-      // Pass 2 Fallback: Full Image & Adaptively Thresholded (Off-center or pre-cropped plates)
+      // 3. Fallback Pass 2: Full Image + Adaptive Binarization
       setStatusMessage("Reading plate (pass 2/3)…");
       const processedUrlFull = preprocess(img, false);
       setProcessedPreview(processedUrlFull);
 
       const result2 = await Tesseract.recognize(processedUrlFull, "eng", {
         tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-        tessedit_pageseg_mode: "6", // SINGLE_BLOCK (assume a single uniform block of text)
+        tessedit_pageseg_mode: "6", // SINGLE_BLOCK
       });
       const text2 = result2.data.text || "";
       normalized = normalizeIndianPlate(text2);
@@ -173,13 +340,13 @@ export default function PlateCapture({ onDetected, label }) {
         return;
       }
 
-      // Pass 3 Fallback: Raw original image (handles weird contrast/thresholding artifacts)
+      // 4. Fallback Pass 3: Raw Image
       setStatusMessage("Reading plate (pass 3/3)…");
       setProcessedPreview(null);
 
       const result3 = await Tesseract.recognize(dataUrl, "eng", {
         tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-        tessedit_pageseg_mode: "3", // AUTO (fully automatic page segmentation)
+        tessedit_pageseg_mode: "3", // AUTO
       });
       const text3 = result3.data.text || "";
       normalized = normalizeIndianPlate(text3);
