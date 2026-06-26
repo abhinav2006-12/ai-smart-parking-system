@@ -2,11 +2,7 @@ import { useState } from "react";
 
 const TYPES = ["standard", "ev", "disabled"];
 
-<<<<<<< HEAD
-export default function SettingsTab({ store, updateStore }) {
-=======
 export default function SettingsTab({ store, updateStore, onLogout }) {
->>>>>>> razin
   const [local, setLocal] = useState(() => JSON.parse(JSON.stringify(store.settings)));
   const [saved, setSaved] = useState(false);
 
@@ -90,8 +86,6 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
         <button onClick={save} className="btn btn-primary">
           Save Settings
         </button>
-<<<<<<< HEAD
-=======
         <button onClick={onLogout} className="btn btn-secondary">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M10 17l5-5-5-5" />
@@ -101,7 +95,6 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
           </svg>
           Log Out
         </button>
->>>>>>> razin
         {saved && <span style={{ color: "var(--success)", fontSize: 13, fontWeight: 600 }}>✓ Saved</span>}
       </div>
     </div>

@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import { useMemo } from "react";
-=======
 import { useMemo, useState } from "react";
->>>>>>> razin
 import {
   ResponsiveContainer,
   AreaChart,
@@ -21,10 +17,7 @@ import { fmtMoney, isSameDay } from "../lib/format";
 const ACCENT = "#2F4858";
 
 export default function DashboardTab({ store }) {
-<<<<<<< HEAD
-=======
   const [selectedSlotType, setSelectedSlotType] = useState(null);
->>>>>>> razin
   const now = new Date();
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
@@ -51,19 +44,6 @@ export default function DashboardTab({ store }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.revenueLog]);
 
-<<<<<<< HEAD
-  const typeData = useMemo(() => {
-    const counts = { standard: 0, ev: 0, disabled: 0 };
-    store.vehicles.filter((v) => v.status === "parked").forEach((v) => {
-      counts[v.type] = (counts[v.type] || 0) + 1;
-    });
-    return [
-      { name: "Standard", value: counts.standard, color: "#2F4858" },
-      { name: "EV", value: counts.ev, color: "#6B8A99" },
-      { name: "Disabled", value: counts.disabled, color: "#C7CDD1" },
-    ];
-  }, [store.vehicles]);
-=======
   const slotTypeData = useMemo(() => {
     return [
       { name: "Standard", value: store.settings.slotsByType.standard, color: "#E53935" },
@@ -73,7 +53,6 @@ export default function DashboardTab({ store }) {
   }, [store.settings.slotsByType]);
 
   const selectedSlot = selectedSlotType || { name: "Total", value: totalSlots };
->>>>>>> razin
 
   const stats = [
     { label: "Total Vehicles", value: totalVehicles, color: "var(--ink)" },
@@ -118,14 +97,6 @@ export default function DashboardTab({ store }) {
         </div>
 
         <div className="card" style={{ padding: "20px", boxShadow: "var(--shadow-sm)" }}>
-<<<<<<< HEAD
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 14 }}>Active by Type</div>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie data={typeData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3}>
-                {typeData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-=======
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 14 }}>Slots by Type</div>
           <div style={{ position: "relative", height: 240 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -139,15 +110,11 @@ export default function DashboardTab({ store }) {
                     onClick={() => setSelectedSlotType(entry)}
                     style={{ cursor: "pointer" }}
                   />
->>>>>>> razin
                 ))}
               </Pie>
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 12 }} />
             </PieChart>
-<<<<<<< HEAD
-          </ResponsiveContainer>
-=======
             </ResponsiveContainer>
             <div
               style={{
@@ -165,7 +132,6 @@ export default function DashboardTab({ store }) {
               <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{selectedSlot.name} slots</div>
             </div>
           </div>
->>>>>>> razin
         </div>
       </div>
     </div>
