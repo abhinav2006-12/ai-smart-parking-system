@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import PlateCapture from "./PlateCapture";
 import { uid, fmtDateTime } from "../lib/format";
 import { isLikelyValidIndianPlate } from "../lib/plate";
-import PriceChartOverlay from "./PriceChartOverlay";
+import { PriceChartCard } from "./PriceChartOverlay";
 
 const VEHICLE_TYPES = [
   { key: "standard", label: "Standard" },
@@ -16,7 +16,6 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   const [photo, setPhoto] = useState(null);
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState("");
-  const [showPriceChart, setShowPriceChart] = useState(false);
 
   const slotsByType = store.settings.slotsByType;
   const occupiedByType = useMemo(() => {
@@ -104,107 +103,85 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   }
 
   return (
-    <div className="fade-up card" style={{ maxWidth: 460, margin: "10px auto", padding: "28px 26px", boxShadow: "var(--shadow-sm)" }}>
-      <h2 className="display" style={{ fontSize: 18, fontWeight: 600 }}>
-        Check-In
-      </h2>
-      <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>Select type, capture the plate, confirm the number.</p>
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 22, flexWrap: "wrap", maxWidth: 1100, margin: "10px auto" }}>
+      <div className="fade-up card" style={{ width: "100%", maxWidth: 460, padding: "28px 26px", boxShadow: "var(--shadow-sm)" }}>
+        <h2 className="display" style={{ fontSize: 18, fontWeight: 600 }}>
+          Check-In
+        </h2>
+        <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>Select type, capture the plate, confirm the number.</p>
 
-      <div style={{ marginTop: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-          <label style={{ marginBottom: 0 }}>Vehicle Type</label>
-          <button
-            type="button"
-            onClick={() => setShowPriceChart(true)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--accent)",
-              fontSize: "12px",
-              fontWeight: "600",
-              cursor: "pointer",
-              padding: 0,
-              textDecoration: "underline",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="20" x2="18" y2="10" />
-              <line x1="12" y1="20" x2="12" y2="4" />
-              <line x1="6" y1="20" x2="6" y2="14" />
-            </svg>
-            View Rates Chart
-          </button>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          {VEHICLE_TYPES.map((t) => {
-            const avail = availableForType(t.key);
-            const active = vehicleType === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setVehicleType(t.key)}
-                disabled={avail <= 0 && !active}
-                style={{
-                  padding: "12px 6px",
-                  borderRadius: "var(--radius-sm)",
-                  border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
-                  background: active ? "var(--accent-soft)" : "var(--surface)",
-                  textAlign: "center",
-                  cursor: avail <= 0 ? "not-allowed" : "pointer",
-                  opacity: avail <= 0 && !active ? 0.45 : 1,
-                }}
-              >
-                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t.label}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{avail} free</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 18 }}>
-        <PlateCapture
-          label="Vehicle Photo"
-          onDetected={(text, photoData) => {
-            setPlateNumber(text);
-            setPhoto(photoData);
-          }}
-        />
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <label>Vehicle Number (confirm / edit)</label>
-        <input
-          type="text"
-          className="mono"
-          value={plateNumber}
-          onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-          placeholder="KL07AB1234"
-          style={{ fontWeight: 600, letterSpacing: "0.02em" }}
-        />
-        {plateNumber && !isLikelyValidIndianPlate(plateNumber) && (
-          <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 6, fontWeight: 500 }}>
-            ⚠ Doesn't quite match the standard format — double check.
+        <div style={{ marginTop: 20 }}>
+          <label>Vehicle Type</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            {VEHICLE_TYPES.map((t) => {
+              const avail = availableForType(t.key);
+              const active = vehicleType === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setVehicleType(t.key)}
+                  disabled={avail <= 0 && !active}
+                  style={{
+                    padding: "12px 6px",
+                    borderRadius: "var(--radius-sm)",
+                    border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                    background: active ? "var(--accent-soft)" : "var(--surface)",
+                    textAlign: "center",
+                    cursor: avail <= 0 ? "not-allowed" : "pointer",
+                    opacity: avail <= 0 && !active ? 0.45 : 1,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t.label}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{avail} free</div>
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
+
+        <div style={{ marginTop: 18 }}>
+          <PlateCapture
+            label="Vehicle Photo"
+            onDetected={(text, photoData) => {
+              setPlateNumber(text);
+              setPhoto(photoData);
+            }}
+          />
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <label>Vehicle Number (confirm / edit)</label>
+          <input
+            type="text"
+            className="mono"
+            value={plateNumber}
+            onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+            placeholder="KL07AB1234"
+            style={{ fontWeight: 600, letterSpacing: "0.02em" }}
+          />
+          {plateNumber && !isLikelyValidIndianPlate(plateNumber) && (
+            <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 6, fontWeight: 500 }}>
+              Does not quite match the standard format - double check.
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <label>Entry Time</label>
+          <input type="text" value={fmtDateTime(Date.now())} disabled />
+        </div>
+
+        {error && <div style={{ color: "var(--danger)", fontSize: 13, fontWeight: 500, marginTop: 14 }}>{error}</div>}
+
+        <button onClick={handleSubmit} className="btn btn-primary" style={{ width: "100%", marginTop: 22 }}>
+          Confirm Check-In
+        </button>
       </div>
 
-      <div style={{ marginTop: 14 }}>
-        <label>Entry Time</label>
-        <input type="text" value={fmtDateTime(Date.now())} disabled />
+      <div style={{ width: "100%", maxWidth: 580, flex: "1 1 360px" }}>
+        <PriceChartCard inline />
       </div>
-
-      {error && <div style={{ color: "var(--danger)", fontSize: 13, fontWeight: 500, marginTop: 14 }}>{error}</div>}
-
-      <button onClick={handleSubmit} className="btn btn-primary" style={{ width: "100%", marginTop: 22 }}>
-        Confirm Check-In
-      </button>
-
-      <PriceChartOverlay isOpen={showPriceChart} onClose={() => setShowPriceChart(false)} />
     </div>
   );
 }
