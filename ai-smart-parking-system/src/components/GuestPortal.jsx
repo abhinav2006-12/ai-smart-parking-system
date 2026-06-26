@@ -37,7 +37,7 @@ export default function GuestPortal({
 
  
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  const canvasRef = useRef(null);anfas
   const streamRef = useRef(null);
   const scanIntervalRef = useRef(null);
 
