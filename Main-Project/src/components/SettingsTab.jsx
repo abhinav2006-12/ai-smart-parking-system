@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const TYPES = ["standard", "ev", "disabled"];
 
-export default function SettingsTab({ store, updateStore }) {
+export default function SettingsTab({ store, updateStore, onLogout }) {
   const [local, setLocal] = useState(() => JSON.parse(JSON.stringify(store.settings)));
   const [saved, setSaved] = useState(false);
 
@@ -85,6 +85,15 @@ export default function SettingsTab({ store, updateStore }) {
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <button onClick={save} className="btn btn-primary">
           Save Settings
+        </button>
+        <button onClick={onLogout} className="btn btn-secondary">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10 17l5-5-5-5" />
+            <path d="M15 12H3" />
+            <path d="M21 19V5a2 2 0 0 0-2-2h-5" />
+            <path d="M14 21h5a2 2 0 0 0 2-2" />
+          </svg>
+          Log Out
         </button>
         {saved && <span style={{ color: "var(--success)", fontSize: 13, fontWeight: 600 }}>✓ Saved</span>}
       </div>
