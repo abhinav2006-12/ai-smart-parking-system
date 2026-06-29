@@ -232,7 +232,7 @@ function genToken() {
  * Returns { ok: true, token } if the seat was free (or expired),
  * Returns { ok: false, since } if another active session is running.
  */
-export async function claimAdminSession() {
+export async function claimAdminSession(existingToken) {
   // Read current session state
   const { data, error } = await supabase
     .from("settings")
@@ -252,12 +252,17 @@ export async function claimAdminSession() {
     data.session_at &&
     now - Number(data.session_at) < SESSION_TTL_MS;
 
+  // If the active session belongs to the token we already have, it's valid
+  if (isActive && existingToken && data.session_token === existingToken) {
+    return { ok: true, token: existingToken };
+  }
+
   if (isActive) {
     return { ok: false, since: Number(data.session_at) };
   }
 
   // Seat is free — write our token
-  const token = genToken();
+  const token = existingToken || genToken();
   const { error: writeErr } = await supabase
     .from("settings")
     .update({ session_token: token, session_at: now })
@@ -294,4 +299,23 @@ export async function releaseAdminSession(token) {
     .update({ session_token: null, session_at: null })
     .eq("id", 1)
     .eq("session_token", token); // only clear if WE own the token
+}
+
+/**
+ * Checks if the admin session is currently occupied by any active device.
+ */
+export async function isSessionOccupied() {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("session_token, session_at")
+    .eq("id", 1)
+    .single();
+
+  if (error || !data) return false;
+  const now = Date.now();
+  return !!(
+    data.session_token &&
+    data.session_at &&
+    now - Number(data.session_at) < SESSION_TTL_MS
+  );
 }

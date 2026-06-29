@@ -10,6 +10,7 @@ import {
   claimAdminSession,
   refreshAdminSession,
   releaseAdminSession,
+  isSessionOccupied,
 } from "./lib/supabase";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
@@ -27,6 +28,7 @@ const VERIFY_INTERVAL = 60 * 1000;
 export default function App() {
   const [store, updateStore, loading] = useStore();
   const [path, navigate] = useRoute();
+  const isAdminRoute = path.replace(/\/+$/, "") === ADMIN_PATH || path === ADMIN_PATH;
   const [theme, toggleTheme] = useTheme();
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [sessionKicked, setSessionKicked] = useState(false);
@@ -68,7 +70,7 @@ export default function App() {
     if (!adminAuthed) return;
     const id = setInterval(async () => {
       if (!tokenRef.current) return;
-      const result = await claimAdminSession();
+      const result = await claimAdminSession(tokenRef.current);
       // If claimAdminSession says it's blocked AND not our own token, we were kicked
       if (!result.ok) {
         setAdminAuthed(false);
@@ -78,6 +80,17 @@ export default function App() {
     }, VERIFY_INTERVAL);
     return () => clearInterval(id);
   }, [adminAuthed]);
+
+  // ── Initial session check: show blocked banner if another device is active ──
+  useEffect(() => {
+    if (isAdminRoute && !adminAuthed) {
+      const checkInitialSession = async () => {
+        const occupied = await isSessionOccupied();
+        setSessionBlocked(occupied);
+      };
+      checkInitialSession();
+    }
+  }, [isAdminRoute, adminAuthed]);
 
   // ── Release session when tab/window is closed ───────────────────────────
   useEffect(() => {
@@ -99,22 +112,24 @@ export default function App() {
     await releaseAdminSession(tokenRef.current);
     tokenRef.current = null;
     setAdminAuthed(false);
+    setSessionKicked(false);
+    setSessionBlocked(false);
     navigate("/");
     channelRef.current?.postMessage("admin-logout");
   }, [navigate]);
 
-  const isAdminRoute = path.replace(/\/+$/, "") === ADMIN_PATH || path === ADMIN_PATH;
-
   const [guestOpen, setGuestOpen] = useState(false);
 
-  // If we navigate away from /admin, release the session
+  // If we navigate away from /admin, release the session and reset session states
   useEffect(() => {
-    if (!isAdminRoute && tokenRef.current) {
-      releaseAdminSession(tokenRef.current);
-      tokenRef.current = null;
+    if (!isAdminRoute) {
+      if (tokenRef.current) {
+        releaseAdminSession(tokenRef.current);
+        tokenRef.current = null;
+      }
       setAdminAuthed(false);
-    } else if (!isAdminRoute) {
-      setAdminAuthed(false);
+      setSessionKicked(false);
+      setSessionBlocked(false);
     }
   }, [isAdminRoute]);
 
