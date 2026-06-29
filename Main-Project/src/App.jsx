@@ -11,6 +11,7 @@ import {
   refreshAdminSession,
   releaseAdminSession,
   isSessionOccupied,
+  forceResetAdminSession,
 } from "./lib/supabase";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
@@ -152,6 +153,11 @@ export default function App() {
             return false;
           }
           return { ok: true, token: result.token };
+        }}
+        onSessionReset={async () => {
+          await forceResetAdminSession();
+          setSessionBlocked(false);
+          channelRef.current?.postMessage("admin-logout");
         }}
       />
     ) : (

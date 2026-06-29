@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "../hooks/useTheme";
 
-export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBlocked, onSessionBlockedCheck }) {
+export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBlocked, onSessionBlockedCheck, onSessionReset }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -148,7 +148,30 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBl
             <circle cx="12" cy="12" r="10" />
             <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
           </svg>
-          Admin session active on another device. Ask them to log out first.
+          <span>Admin session active on another device. Ask them to log out first.</span>
+          {onSessionReset && (
+            <button
+              type="button"
+              onClick={onSessionReset}
+              style={{
+                background: "rgba(255, 255, 255, 0.22)",
+                border: "none",
+                borderRadius: "6px",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: 700,
+                padding: "4px 10px",
+                marginLeft: "8px",
+                textTransform: "uppercase",
+                transition: "all 0.15s ease",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.35)")}
+              onMouseOut={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.22)")}
+            >
+              Reset
+            </button>
+          )}
         </div>
       )}
 

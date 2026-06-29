@@ -319,3 +319,13 @@ export async function isSessionOccupied() {
     now - Number(data.session_at) < SESSION_TTL_MS
   );
 }
+
+/**
+ * Forcefully clears the admin session, ignoring who owns it.
+ */
+export async function forceResetAdminSession() {
+  await supabase
+    .from("settings")
+    .update({ session_token: null, session_at: null })
+    .eq("id", 1);
+}
