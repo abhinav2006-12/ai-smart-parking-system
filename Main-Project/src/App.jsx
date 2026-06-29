@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, useEffect } from "react";
+import { Suspense, lazy, useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "./hooks/useStore";
 import { useRoute } from "./hooks/useRoute";
 import { useTheme } from "./hooks/useTheme";
@@ -19,6 +19,40 @@ export default function App() {
   const [path, navigate] = useRoute();
   const [theme, toggleTheme] = useTheme();
   const [adminAuthed, setAdminAuthed] = useState(false);
+  const [sessionKicked, setSessionKicked] = useState(false);
+  const channelRef = useRef(null);
+
+  // Single-session enforcement via BroadcastChannel
+  useEffect(() => {
+    const ch = new BroadcastChannel("parkpilot_admin_session");
+    channelRef.current = ch;
+
+    ch.onmessage = (e) => {
+      if (e.data === "admin-login") {
+        // Another tab just logged in — kick this one out
+        setAdminAuthed(false);
+        setSessionKicked(true);
+      } else if (e.data === "admin-logout") {
+        setSessionKicked(false);
+      }
+    };
+
+    return () => ch.close();
+  }, []);
+
+  const handleAdminLogin = useCallback(() => {
+    setSessionKicked(false);
+    setAdminAuthed(true);
+    // Notify all other tabs that admin seat is taken
+    channelRef.current?.postMessage("admin-login");
+  }, []);
+
+  const handleAdminLogout = useCallback(() => {
+    setAdminAuthed(false);
+    navigate("/");
+    // Release the seat so other tabs can log in
+    channelRef.current?.postMessage("admin-logout");
+  }, [navigate]);
 
   const isAdminRoute = path.replace(/\/+$/, "") === ADMIN_PATH || path === ADMIN_PATH;
 
@@ -39,16 +73,17 @@ export default function App() {
     content = <LoadingScreen />;
   } else if (isAdminRoute) {
     content = !adminAuthed ? (
-      <AdminLogin onSuccess={() => setAdminAuthed(true)} onBack={() => navigate("/")} />
+      <AdminLogin
+        onSuccess={handleAdminLogin}
+        onBack={() => navigate("/")}
+        sessionKicked={sessionKicked}
+      />
     ) : (
       <Suspense fallback={<LoadingScreen />}>
         <AdminPanel
           store={store}
           updateStore={updateStore}
-          onLogout={() => {
-            setAdminAuthed(false);
-            navigate("/");
-          }}
+          onLogout={handleAdminLogout}
         />
       </Suspense>
     );

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "../hooks/useTheme";
 
-export default function AdminLogin({ onSuccess, onBack }) {
+export default function AdminLogin({ onSuccess, onBack, sessionKicked }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -79,6 +79,38 @@ export default function AdminLogin({ onSuccess, onBack }) {
       <div style={{ position: "absolute", top: 24, right: 24 }}>
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </div>
+
+      {/* Session Kicked Banner */}
+      {sessionKicked && (
+        <div
+          className="fade-up"
+          style={{
+            position: "absolute",
+            top: 18,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#7C3AED",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "9px 18px",
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            boxShadow: "0 4px 18px rgba(124,58,237,0.35)",
+            whiteSpace: "nowrap",
+            zIndex: 99,
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          Session active in another window — only 1 admin allowed at a time.
+        </div>
+      )}
 
       <form
         onSubmit={handleSubmit}
