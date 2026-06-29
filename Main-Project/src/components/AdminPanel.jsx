@@ -40,25 +40,30 @@ export default function AdminPanel({ store, updateStore, onLogout }) {
           padding: 0,
           fontSize: 20,
           lineHeight: 1,
+          opacity: sidebarOpen ? 0 : 1,
+          transform: sidebarOpen ? "translateX(-40px) rotate(-90deg)" : "translateX(0) rotate(0)",
+          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          pointerEvents: sidebarOpen ? "none" : "auto",
         }}
       >
         ...
       </button>
 
-      {sidebarOpen && (
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="Close sidebar overlay"
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 25,
-            border: "none",
-            background: "rgba(15, 18, 22, 0.35)",
-          }}
-        />
-      )}
+      <button
+        type="button"
+        onClick={() => setSidebarOpen(false)}
+        aria-label="Close sidebar overlay"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 25,
+          border: "none",
+          background: "rgba(15, 18, 22, 0.35)",
+          opacity: sidebarOpen ? 1 : 0,
+          pointerEvents: sidebarOpen ? "auto" : "none",
+          transition: "opacity 0.3s ease",
+        }}
+      />
 
       <aside
         style={{
@@ -74,7 +79,7 @@ export default function AdminPanel({ store, updateStore, onLogout }) {
           inset: "0 auto 0 0",
           zIndex: 30,
           transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
-          transition: "transform .2s ease",
+          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           boxShadow: sidebarOpen ? "var(--shadow-md)" : "none",
         }}
       >
