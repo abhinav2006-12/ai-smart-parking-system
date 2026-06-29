@@ -89,38 +89,83 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBl
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </div>
 
-      {/* Session Kicked Banner */}
+      {/* Full-screen Glassmorphic Session Kicked Overlay */}
       {sessionKicked && (
         <div
           className="fade-up"
           style={{
-            position: "absolute",
-            top: 18,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "rgba(124, 58, 237, 0.15)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            border: "1px solid rgba(124, 58, 237, 0.35)",
-            color: "#7C3AED",
-            fontSize: 12.5,
-            fontWeight: 600,
-            padding: "9px 18px",
-            borderRadius: 12,
+            position: "fixed",
+            inset: 0,
+            background: theme === "dark" ? "rgba(10, 12, 16, 0.65)" : "rgba(255, 255, 255, 0.45)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            boxShadow: "0 8px 32px rgba(124, 58, 237, 0.12)",
-            whiteSpace: "nowrap",
-            zIndex: 99,
+            justifyContent: "center",
+            zIndex: 10000,
+            padding: 24,
           }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-          Another user logged in.
+          <div
+            className="card animate-scale-up"
+            style={{
+              width: "100%",
+              maxWidth: 400,
+              padding: "36px 30px",
+              textAlign: "center",
+              background: theme === "dark" ? "rgba(23, 27, 33, 0.85)" : "rgba(255, 255, 255, 0.85)",
+              border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.08)",
+              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.15)",
+              borderRadius: 20,
+            }}
+          >
+            {/* Visual Indicator (Exclamation Badge) */}
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                background: "rgba(124, 58, 237, 0.15)",
+                color: "#7C3AED",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 20px",
+                border: "1px solid rgba(124, 58, 237, 0.3)",
+              }}
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </div>
+
+            <h3 className="display" style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>
+              Another User Logged In
+            </h3>
+            <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 8, marginBottom: 24, lineHeight: "1.5" }}>
+              Your administrator session was disconnected because another device has claimed the login.
+            </p>
+
+            <button
+              type="button"
+              onClick={onBack}
+              className="btn btn-primary"
+              style={{
+                width: "100%",
+                height: 44,
+                borderRadius: 10,
+                background: "var(--accent)",
+                color: "#fff",
+                fontWeight: 600,
+                fontSize: 14,
+                transition: "all 0.2s ease",
+              }}
+            >
+              Return to Home
+            </button>
+          </div>
         </div>
       )}
 

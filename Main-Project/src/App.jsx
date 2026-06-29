@@ -23,8 +23,8 @@ const ADMIN_PATH = "/admin";
 
 // How often to ping the heartbeat (5 minutes)
 const HEARTBEAT_INTERVAL = 5 * 60 * 1000;
-// How often to verify we still own the session (10 seconds)
-const VERIFY_INTERVAL = 10 * 1000;
+// How often to verify we still own the session (2 seconds)
+const VERIFY_INTERVAL = 2 * 1000;
 
 export default function App() {
   const [store, updateStore, loading] = useStore();
