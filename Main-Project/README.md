@@ -139,7 +139,7 @@ create table revenue_log (
 ### 1. Clone and install
 
 ```bash
-git clone <your-repo-url>
+git clone 
 cd ai-smart-parking-system-main/Main-Project
 npm install
 ```
