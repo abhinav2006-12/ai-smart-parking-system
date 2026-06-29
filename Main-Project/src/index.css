@@ -171,7 +171,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   box-shadow:var(--shadow-md);
 }
 
-input[type=text], input[type=number], select{
+input[type=text], input[type=password], input[type=number], select{
   width:100%;
   padding:10px 12px;
   border-radius:var(--radius-sm);
@@ -181,7 +181,7 @@ input[type=text], input[type=number], select{
   color:var(--ink);
   transition:background-color .2s ease, border-color .15s ease, color .2s ease;
 }
-input[type=text]:focus, input[type=number]:focus, select:focus{
+input[type=text]:focus, input[type=password]:focus, input[type=number]:focus, select:focus{
   border-color:var(--accent);
   outline:none;
   box-shadow:0 0 0 3px var(--accent-soft);
@@ -256,3 +256,69 @@ label{
 .animate-scale-up {
   animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+/* Vehicle Loader Animations */
+@keyframes vLoaderSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes vLoaderBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes vLoaderRoadScroll {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -18; }
+}
+
+@keyframes vLoaderSpeed {
+  0% { transform: translateX(35px); opacity: 0; }
+  20% { opacity: 0.8; }
+  80% { opacity: 0.8; }
+  100% { transform: translateX(-35px); opacity: 0; }
+}
+
+@keyframes vLoaderGlow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.35; }
+}
+
+.v-loader-wheel {
+  animation: vLoaderSpin 0.5s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.v-loader-body {
+  animation: vLoaderBounce 0.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.v-loader-road {
+  animation: vLoaderRoadScroll 0.35s linear infinite;
+}
+
+.v-loader-speed-line {
+  animation: vLoaderSpeed 0.8s linear infinite;
+}
+
+.v-loader-speed-line:nth-child(1) {
+  animation-delay: 0s;
+}
+.v-loader-speed-line:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.v-loader-speed-line:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.v-loader-speed-line:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+.v-loader-glow {
+  animation: vLoaderGlow 1s ease-in-out infinite;
+}
+

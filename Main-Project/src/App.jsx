@@ -5,6 +5,7 @@ import { useTheme } from "./hooks/useTheme";
 import HomeScreen from "./components/HomeScreen";
 import AdminLogin from "./components/AdminLogin";
 import AmbientBackground from "./components/AmbientBackground";
+import VehicleLoader from "./components/VehicleLoader";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 const GuestPanel = lazy(() => import("./components/GuestPanel"));
@@ -70,31 +71,5 @@ export default function App() {
 }
 
 function LoadingScreen() {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        gap: 16,
-        color: "var(--ink)",
-      }}
-    >
-      <div
-        className="spin"
-        style={{
-          width: 32,
-          height: 32,
-          border: "3px solid var(--border)",
-          borderTopColor: "var(--accent)",
-          borderRadius: "50%",
-        }}
-      ></div>
-      <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--muted)", letterSpacing: "0.01em" }}>
-        Connecting to database...
-      </div>
-    </div>
-  );
+  return <VehicleLoader />;
 }
