@@ -215,3 +215,83 @@ export async function wipeAllData() {
     throw vehErr;
   }
 }
+
+// ─── Admin Session Management (cross-device single-session lock) ───────────
+
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Generates a random session token string.
+ */
+function genToken() {
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
+
+/**
+ * Tries to claim the admin session in Supabase.
+ * Returns { ok: true, token } if the seat was free (or expired),
+ * Returns { ok: false, since } if another active session is running.
+ */
+export async function claimAdminSession() {
+  // Read current session state
+  const { data, error } = await supabase
+    .from("settings")
+    .select("session_token, session_at")
+    .eq("id", 1)
+    .single();
+
+  if (error) {
+    console.error("[session] read error:", error);
+    // Allow login if we can't read — fail open
+    return { ok: true, token: null };
+  }
+
+  const now = Date.now();
+  const isActive =
+    data.session_token &&
+    data.session_at &&
+    now - Number(data.session_at) < SESSION_TTL_MS;
+
+  if (isActive) {
+    return { ok: false, since: Number(data.session_at) };
+  }
+
+  // Seat is free — write our token
+  const token = genToken();
+  const { error: writeErr } = await supabase
+    .from("settings")
+    .update({ session_token: token, session_at: now })
+    .eq("id", 1);
+
+  if (writeErr) {
+    console.error("[session] claim error:", writeErr);
+    return { ok: true, token: null }; // fail open
+  }
+
+  return { ok: true, token };
+}
+
+/**
+ * Refreshes session heartbeat so it doesn't expire while the admin is active.
+ * Should be called every ~5 minutes. Pass the token from claimAdminSession.
+ */
+export async function refreshAdminSession(token) {
+  if (!token) return;
+  await supabase
+    .from("settings")
+    .update({ session_at: Date.now() })
+    .eq("id", 1)
+    .eq("session_token", token); // only refresh if WE own the token
+}
+
+/**
+ * Clears the admin session token so other devices can log in.
+ */
+export async function releaseAdminSession(token) {
+  if (!token) return;
+  await supabase
+    .from("settings")
+    .update({ session_token: null, session_at: null })
+    .eq("id", 1)
+    .eq("session_token", token); // only clear if WE own the token
+}

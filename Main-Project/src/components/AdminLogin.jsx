@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "../hooks/useTheme";
 
-export default function AdminLogin({ onSuccess, onBack, sessionKicked }) {
+export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBlocked, onSessionBlockedCheck }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -42,17 +42,26 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked }) {
     setErr("");
 
     // Simulate authenticating for a high-end feel
-    setTimeout(() => {
+    setTimeout(async () => {
       if (email.toLowerCase().trim() === "parkpilot@gmail.com" && password === "parkpilot2025") {
-        setSuccess(true);
+        // Check/claim cross-device session before granting access
+        if (onSessionBlockedCheck) {
+          const result = await onSessionBlockedCheck();
+          if (!result) {
+            setLoading(false);
+            return; // sessionBlocked state already set in App.jsx
+          }
+          setSuccess(true);
+          setTimeout(() => onSuccess(result.token), 800);
+        } else {
+          setSuccess(true);
+          setTimeout(() => onSuccess(null), 800);
+        }
         setAttempts(0);
-        setTimeout(() => {
-          onSuccess();
-        }, 800);
       } else {
         const nextAttempts = attempts + 1;
         if (nextAttempts >= 5) {
-          setLockoutSecs(30); // 30 second lockout
+          setLockoutSecs(30);
           setAttempts(0);
           setErr("Too many failed login attempts. Locked out for 30 seconds.");
         } else {
@@ -109,6 +118,37 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked }) {
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
           Session active in another window — only 1 admin allowed at a time.
+        </div>
+      )}
+
+      {/* Session Blocked Banner (cross-device) */}
+      {sessionBlocked && (
+        <div
+          className="fade-up"
+          style={{
+            position: "absolute",
+            top: 18,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#DC2626",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "9px 18px",
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            boxShadow: "0 4px 18px rgba(220,38,38,0.35)",
+            whiteSpace: "nowrap",
+            zIndex: 99,
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+          </svg>
+          Admin session active on another device. Ask them to log out first.
         </div>
       )}
 
