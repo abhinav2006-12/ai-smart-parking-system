@@ -1,7 +1,9 @@
 import { useState, useRef } from "react";
 import { normalizeIndianPlate } from "../lib/plate";
+import LiveCameraCapture from "./LiveCameraCapture";
 
 export default function PlateCapture({ onDetected, label }) {
+  const [mode, setMode] = useState("live"); // live | manual
   const [photo, setPhoto] = useState(null); // dataURL
   const [processedPreview, setProcessedPreview] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | processing | done | error
@@ -103,9 +105,28 @@ export default function PlateCapture({ onDetected, label }) {
     onDetected("", null);
   };
 
+  const handleLiveDetected = (plateText, photoDataUrl) => {
+    setPhoto(photoDataUrl);
+    setStatus("done");
+    onDetected(plateText, photoDataUrl);
+  };
+
   return (
     <div>
-      <label>{label}</label>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <label style={{ marginBottom: 0 }}>{label}</label>
+        <ModeToggle
+          mode={mode}
+          onChange={(next) => {
+            // Switching modes mid-capture should reset whatever the previous
+            // mode had in progress, so a half-finished live scan doesn't
+            // bleed into a stale manual-mode photo, or vice versa.
+            setMode(next);
+            retake();
+          }}
+        />
+      </div>
+
       <canvas ref={canvasRef} style={{ display: "none" }}></canvas>
       <input
         ref={fileInputRef}
@@ -116,7 +137,9 @@ export default function PlateCapture({ onDetected, label }) {
         onChange={(e) => handleFile(e.target.files[0])}
       />
 
-      {!photo && (
+      {mode === "live" && !photo && <LiveCameraCapture onDetected={handleLiveDetected} />}
+
+      {mode === "manual" && !photo && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button
             type="button"
@@ -185,6 +208,53 @@ export default function PlateCapture({ onDetected, label }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Pill-style segmented toggle between "Live AI Camera" and "Manual Upload".
+// Kept visually small/secondary since it's a fallback control, not the
+// primary action — most operators should never need to touch it.
+function ModeToggle({ mode, onChange }) {
+  const options = [
+    { key: "live", label: "Live AI Camera" },
+    { key: "manual", label: "Manual Upload" },
+  ];
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        padding: 3,
+        borderRadius: 9,
+        background: "var(--surface-muted)",
+        border: "1px solid var(--border)",
+        gap: 2,
+      }}
+    >
+      {options.map((opt) => {
+        const active = mode === opt.key;
+        return (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => onChange(opt.key)}
+            style={{
+              padding: "5px 10px",
+              fontSize: 11.5,
+              fontWeight: 600,
+              borderRadius: 6,
+              border: "none",
+              cursor: "pointer",
+              background: active ? "var(--surface)" : "transparent",
+              color: active ? "var(--accent)" : "var(--muted)",
+              boxShadow: active ? "var(--shadow-sm)" : "none",
+              transition: "background-color .15s ease, color .15s ease",
+            }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

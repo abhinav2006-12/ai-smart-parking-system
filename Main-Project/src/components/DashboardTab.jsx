@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -17,6 +17,7 @@ import { fmtMoney, isSameDay } from "../lib/format";
 const ACCENT = "#2F4858";
 
 export default function DashboardTab({ store }) {
+  const [selectedSlotType, setSelectedSlotType] = useState(null);
   const now = new Date();
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
@@ -43,17 +44,15 @@ export default function DashboardTab({ store }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.revenueLog]);
 
-  const typeData = useMemo(() => {
-    const counts = { standard: 0, ev: 0, disabled: 0 };
-    store.vehicles.filter((v) => v.status === "parked").forEach((v) => {
-      counts[v.type] = (counts[v.type] || 0) + 1;
-    });
+  const slotTypeData = useMemo(() => {
     return [
-      { name: "Standard", value: counts.standard, color: "#2F4858" },
-      { name: "EV", value: counts.ev, color: "#6B8A99" },
-      { name: "Disabled", value: counts.disabled, color: "#C7CDD1" },
+      { name: "Standard", value: store.settings.slotsByType.standard, color: "#E53935" },
+      { name: "EV", value: store.settings.slotsByType.ev, color: "#1E88E5" },
+      { name: "Disabled", value: store.settings.slotsByType.disabled, color: "#43A047" },
     ];
-  }, [store.vehicles]);
+  }, [store.settings.slotsByType]);
+
+  const selectedSlot = selectedSlotType || { name: "Total", value: totalSlots };
 
   const stats = [
     { label: "Total Vehicles", value: totalVehicles, color: "var(--ink)" },
@@ -98,18 +97,41 @@ export default function DashboardTab({ store }) {
         </div>
 
         <div className="card" style={{ padding: "20px", boxShadow: "var(--shadow-sm)" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 14 }}>Active by Type</div>
-          <ResponsiveContainer width="100%" height={240}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 14 }}>Slots by Type</div>
+          <div style={{ position: "relative", height: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={typeData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3}>
-                {typeData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+              <Pie data={slotTypeData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={82} paddingAngle={3}>
+                {slotTypeData.map((entry, i) => (
+                  <Cell
+                    key={i}
+                    fill={entry.color}
+                    opacity={!selectedSlotType || selectedSlotType.name === entry.name ? 1 : 0.45}
+                    onClick={() => setSelectedSlotType(entry)}
+                    style={{ cursor: "pointer" }}
+                  />
                 ))}
               </Pie>
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 12 }} />
             </PieChart>
-          </ResponsiveContainer>
+            </ResponsiveContainer>
+            <div
+              style={{
+                position: "absolute",
+                top: "42%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                textAlign: "center",
+                pointerEvents: "none",
+              }}
+            >
+              <div className="display" style={{ fontSize: 22, fontWeight: 600 }}>
+                {selectedSlot.value}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{selectedSlot.name} slots</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import PlateCapture from "./PlateCapture";
 import { uid, fmtMoney, fmtDateTime, formatDuration, durationMinutes, buildUpiUri } from "../lib/format";
+import { isStrictIndianPlate } from "../lib/plate";
 
 export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [plateNumber, setPlateNumber] = useState("");
@@ -9,6 +10,13 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [notFoundMsg, setNotFoundMsg] = useState("");
   const [paid, setPaid] = useState(false);
   const [qrUrl, setQrUrl] = useState(null);
+
+  // Bumped every time we want a genuinely fresh camera session (not just
+  // cleared text). React only tears down and remounts a component when its
+  // `key` changes — without this, resetting plateNumber/photo back to
+  // empty would NOT reset LiveCameraCapture's internal vote buffer or
+  // locked-plate state, since the component instance itself never unmounts.
+  const [captureSessionId, setCaptureSessionId] = useState(0);
 
   const tryMatch = (plate) => {
     const cleanPlate = plate.trim().toUpperCase();
@@ -30,6 +38,32 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
       setNotFoundMsg("No parked vehicle found with that number. Check the plate or search it up in Admin.");
     }
   };
+
+  // Tracks the last plate string we already auto-triggered a lookup for, so
+  // we don't re-fire tryMatch on every keystroke/render once a plate has
+  // settled — only when the *value itself* changes to a new valid plate.
+  const lastAutoCheckedRef = useRef("");
+
+  // Auto-detector: the moment the field holds a strict, fully-formed Indian
+  // plate (10 chars, SS NN LLL NNNN) — whether it got there by the camera
+  // auto-filling it or the operator typing/editing it by hand — we
+  // automatically look the vehicle up. No manual "Find" click required.
+  // Loosely-formatted/partial plates are left alone: we don't want to spam
+  // lookups mid-keystroke while someone is still typing.
+  useEffect(() => {
+    const clean = plateNumber.trim().toUpperCase();
+    if (isStrictIndianPlate(clean) && clean !== lastAutoCheckedRef.current) {
+      lastAutoCheckedRef.current = clean;
+      tryMatch(clean);
+    }
+    // Clears the "already checked" memo once the field is emptied/edited
+    // back down below the strict length, so re-entering the same plate
+    // later (e.g. after a Retake) still triggers a fresh lookup.
+    if (!isStrictIndianPlate(clean)) {
+      lastAutoCheckedRef.current = "";
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tryMatch reads `store`/`matched` via closure each render; re-running on plateNumber alone is intentional
+  }, [plateNumber]);
 
   useEffect(() => {
     if (matched && !paid) {
@@ -92,9 +126,32 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
           Duration: {formatDuration(matched.durationMinsPreview)} · billed {matched.hoursBilled} hr
         </div>
-        <button onClick={onDone} className="btn btn-primary" style={{ width: "100%", marginTop: 24 }}>
-          Done
-        </button>
+        <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+          <button
+            onClick={() => {
+              // Resets every piece of local state back to a blank slate —
+              // this is what "resets the live camera for the next vehicle"
+              // means in practice: PlateCapture/LiveCameraCapture re-mount
+              // fresh (their internal vote buffer + photo state start over)
+              // because plateNumber/photo going back to null/"" makes the
+              // capture flow render as if newly opened.
+              setPlateNumber("");
+              setPhoto(null);
+              setMatched(null);
+              setNotFoundMsg("");
+              setPaid(false);
+              setQrUrl(null);
+              setCaptureSessionId((n) => n + 1);
+            }}
+            className="btn btn-secondary"
+            style={{ flex: 1 }}
+          >
+            Scan Next Vehicle
+          </button>
+          <button onClick={onDone} className="btn btn-primary" style={{ flex: 1 }}>
+            Done
+          </button>
+        </div>
       </div>
     );
   }
@@ -104,10 +161,11 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
       <h2 className="display" style={{ fontSize: 18, fontWeight: 600 }}>
         Check-Out
       </h2>
-      <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>Capture the plate to find the matching entry.</p>
+      <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>Capture or type the plate — we'll look it up automatically.</p>
 
       <div style={{ marginTop: 18 }}>
         <PlateCapture
+          key={captureSessionId}
           label="Vehicle Photo"
           onDetected={(text, photoData) => {
             setPlateNumber(text);
@@ -172,7 +230,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
           )}
 
           <button onClick={completeCheckout} className="btn btn-primary" style={{ width: "100%", marginTop: 18 }}>
-            Mark Paid &amp; Complete Check-Out
+            Simulate Payment Success
           </button>
         </div>
       )}
