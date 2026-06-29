@@ -153,10 +153,9 @@ cp .env.example .env
 Open `.env` and fill in your values:
 
 ```env
-PLATERECOGNIZER_TOKEN=your_token_here
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key_here
-```
+PLATERECOGNIZER_TOKEN=XXXXXXXXXXXXXXXXXXXX
+VITE_SUPABASE_URL=XXXXXXXXXXXXXXXXX
+VITE_SUPABASE_ANON_KEY=XXXXXXXXXXXXX
 
 `PLATERECOGNIZER_TOKEN` is read only by the serverless function — it is never bundled into client-side JavaScript. The two `VITE_` variables are embedded in the browser bundle (they're public Supabase credentials, which is intentional and safe with correct RLS policies).
 
