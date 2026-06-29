@@ -13,6 +13,8 @@ export function useStore() {
       try {
         const cloudData = await loadStoreFromSupabase();
         if (cloudData) {
+          // Always write fresh Supabase data to localStorage, overwriting any stale cache
+          saveStore(cloudData);
           setStore(cloudData);
           lastSavedStoreRef.current = JSON.parse(JSON.stringify(cloudData));
         } else {
@@ -20,7 +22,7 @@ export function useStore() {
           const localData = loadStore();
           setStore(localData);
           lastSavedStoreRef.current = JSON.parse(JSON.stringify(localData));
-          
+
           // Seed database settings row
           await syncStoreToSupabase(localData, defaultStore());
         }

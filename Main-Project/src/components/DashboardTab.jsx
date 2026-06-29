@@ -33,25 +33,36 @@ export default function DashboardTab({ store }) {
   const revenueYesterday = store.revenueLog.filter((r) => isSameDay(r.date, yesterday)).reduce((s, r) => s + r.amount, 0);
 
   const chartData = useMemo(() => {
-    const chartNow = new Date();
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(chartNow);
-      d.setDate(chartNow.getDate() - i);
-      const total = store.revenueLog.filter((r) => isSameDay(r.date, d)).reduce((s, r) => s + r.amount, 0);
+    // Build a local-date key "YYYY-MM-DD" from any timestamp (ms number or ISO string)
+    const toDateKey = (ts) => {
+      if (!ts) return null;
+      const d = typeof ts === "number" ? new Date(ts) : new Date(ts);
+      if (isNaN(d.getTime())) return null;
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
 
-      // Simulated operating costs/losses baseline + slight variance
-      const simulatedLoss = total > 0
-        ? Math.round(total * 0.2 + 80 + (d.getDate() % 4) * 30)
-        : Math.round(120 + (d.getDate() % 4) * 30);
-
-      days.push({
-        day: d.toLocaleDateString("en-IN", { weekday: "short" }),
-        profit: total,
-        loss: simulatedLoss,
-      });
+    // Group revenue by local date key
+    const revenueByDay = {};
+    for (const r of store.revenueLog) {
+      const key = toDateKey(r.date);
+      if (key) revenueByDay[key] = (revenueByDay[key] || 0) + r.amount;
     }
-    return days;
+
+    const chartNow = new Date();
+    const DAILY_OPERATING_COST = 150; // Fixed estimated daily operating cost in ₹
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(chartNow);
+      d.setDate(chartNow.getDate() - (6 - i));
+      const key = toDateKey(d.getTime());
+      const revenue = revenueByDay[key] || 0;
+      return {
+        day: d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric" }),
+        revenue,
+        cost: DAILY_OPERATING_COST,
+        net: revenue - DAILY_OPERATING_COST,
+      };
+    });
   }, [store.revenueLog]);
 
   const slotTypeData = useMemo(() => {
@@ -98,26 +109,31 @@ export default function DashboardTab({ store }) {
       {/* Graphs Row */}
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
         <div className="card" style={{ padding: "20px", boxShadow: "var(--shadow-sm)", minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 14 }}>Profits & Losses — Last 7 Days</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 14 }}>Revenue vs Operating Cost — Last 7 Days</div>
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={chartData}>
               <defs>
-                <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1F7A4D" stopOpacity={0.3} />
+                <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#1F7A4D" stopOpacity={0.35} />
                   <stop offset="100%" stopColor="#1F7A4D" stopOpacity={0} />
                 </linearGradient>
-                <linearGradient id="lossGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#C0392B" stopOpacity={0.3} />
+                <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#C0392B" stopOpacity={0.25} />
                   <stop offset="100%" stopColor="#C0392B" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2563EB" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#ECECE9" />
-              <XAxis dataKey="day" tick={{ fontSize: 12, fill: "#6B7280" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: "#6B7280" }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ borderRadius: 8, border: "1px solid #E4E4E2" }} />
+              <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 12, fill: "#6B7280" }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v}`} />
+              <Tooltip formatter={(v, name) => [fmtMoney(v), name]} contentStyle={{ borderRadius: 8, border: "1px solid #E4E4E2", fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 12, marginTop: 4 }} />
-              <Area type="monotone" name="Profit" dataKey="profit" stroke="#1F7A4D" strokeWidth={2} fill="url(#profitGrad)" />
-              <Area type="monotone" name="Loss" dataKey="loss" stroke="#C0392B" strokeWidth={2} fill="url(#lossGrad)" />
+              <Area type="monotone" name="Revenue" dataKey="revenue" stroke="#1F7A4D" strokeWidth={2.5} fill="url(#revenueGrad)" dot={{ r: 3, fill: "#1F7A4D" }} />
+              <Area type="monotone" name="Operating Cost" dataKey="cost" stroke="#C0392B" strokeWidth={1.5} strokeDasharray="5 3" fill="url(#costGrad)" />
+              <Area type="monotone" name="Net" dataKey="net" stroke="#2563EB" strokeWidth={2} fill="url(#netGrad)" dot={{ r: 3, fill: "#2563EB" }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
