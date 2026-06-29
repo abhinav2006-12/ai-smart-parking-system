@@ -23,6 +23,67 @@ const DEFAULT_PRICING_DATA = [
 ];
 
 export default function PriceChartOverlay({ isOpen, onClose, data = DEFAULT_PRICING_DATA }) {
+  const [isDarkOverlay, setIsDarkOverlay] = useState(false);
+
+  useEffect(() => {
+    const checkTheme = () => {
+      const themeAttr = document.documentElement.getAttribute("data-theme");
+      setIsDarkOverlay(themeAttr === "dark");
+    };
+
+    checkTheme();
+
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+        background: isDarkOverlay ? "rgba(10, 12, 16, 0.45)" : "rgba(240, 240, 240, 0.4)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        animation: "fadeUp 0.25s ease-out",
+      }}
+      onClick={handleBackdropClick}
+    >
+      <PriceChartCard data={data} onClose={onClose} />
+    </div>
+  );
+}
+
+export function PriceChartCard({ data = DEFAULT_PRICING_DATA, onClose, inline = false }) {
   const [isDark, setIsDark] = useState(false);
   const [activeTab, setActiveTab] = useState("all"); // all | standard | ev | disabled
 
@@ -45,20 +106,6 @@ export default function PriceChartOverlay({ isOpen, onClose, data = DEFAULT_PRIC
     return () => observer.disconnect();
   }, []);
 
-  // Prevent background scroll when overlay is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
   // Colors for lines and fills
   const colors = {
     Standard: {
@@ -73,21 +120,6 @@ export default function PriceChartOverlay({ isOpen, onClose, data = DEFAULT_PRIC
       stroke: isDark ? "#F59E0B" : "#D97706",
       fill: "url(#colorDisabled)",
     },
-  };
-
-  // Glassmorphic Style Rules
-  const overlayStyle = {
-    position: "fixed",
-    inset: 0,
-    zIndex: 1000,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "20px",
-    background: isDark ? "rgba(10, 12, 16, 0.45)" : "rgba(240, 240, 240, 0.4)",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
-    animation: "fadeUp 0.25s ease-out",
   };
 
   const cardStyle = {
@@ -110,6 +142,8 @@ export default function PriceChartOverlay({ isOpen, onClose, data = DEFAULT_PRIC
     flexDirection: "column",
     gap: "16px",
     backdropFilter: "blur(10px)",
+    alignSelf: inline ? "flex-start" : undefined,
+    marginTop: inline ? "10px" : undefined,
   };
 
   const closeButtonStyle = {
@@ -171,26 +205,21 @@ export default function PriceChartOverlay({ isOpen, onClose, data = DEFAULT_PRIC
     return null;
   };
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
-    <div style={overlayStyle} onClick={handleBackdropClick}>
       <div style={cardStyle} className="fade-up">
         {/* Close Button */}
-        <button
-          onClick={onClose}
-          style={closeButtonStyle}
-          className="btn-ghost"
-          aria-label="Close pricing overlay"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={closeButtonStyle}
+            className="btn-ghost"
+            aria-label="Close pricing overlay"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        )}
 
         {/* Header */}
         <div>
@@ -386,7 +415,6 @@ export default function PriceChartOverlay({ isOpen, onClose, data = DEFAULT_PRIC
             <div style={{ fontSize: "14px", fontWeight: "700", color: colors.Disabled.stroke, marginTop: "2px" }}>₹20/hr</div>
           </div>
         </div>
-      </div>
     </div>
   );
 }
