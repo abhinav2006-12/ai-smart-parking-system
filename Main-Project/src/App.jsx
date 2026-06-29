@@ -14,7 +14,7 @@ const GuestPanel = lazy(() => import("./components/GuestPanel"));
 const ADMIN_PATH = "/admin";
 
 export default function App() {
-  const [store, updateStore] = useStore();
+  const [store, updateStore, loading] = useStore();
   const [path, navigate] = useRoute();
   const [theme, toggleTheme] = useTheme();
   const [adminAuthed, setAdminAuthed] = useState(false);
@@ -34,7 +34,9 @@ export default function App() {
 
   let content;
 
-  if (isAdminRoute) {
+  if (loading) {
+    content = <LoadingScreen />;
+  } else if (isAdminRoute) {
     content = !adminAuthed ? (
       <AdminLogin onSuccess={() => setAdminAuthed(true)} onBack={() => navigate("/")} />
     ) : (
@@ -69,8 +71,30 @@ export default function App() {
 
 function LoadingScreen() {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>
-      Loading…
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: 16,
+        color: "var(--ink)",
+      }}
+    >
+      <div
+        className="spin"
+        style={{
+          width: 32,
+          height: 32,
+          border: "3px solid var(--border)",
+          borderTopColor: "var(--accent)",
+          borderRadius: "50%",
+        }}
+      ></div>
+      <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--muted)", letterSpacing: "0.01em" }}>
+        Connecting to database...
+      </div>
     </div>
   );
 }

@@ -1,98 +1,43 @@
 import { useState, useRef } from "react";
 import { normalizeIndianPlate } from "../lib/plate";
+import { recognizePlate } from "../lib/anpr";
 import LiveCameraCapture from "./LiveCameraCapture";
 
 export default function PlateCapture({ onDetected, label }) {
   const [mode, setMode] = useState("live"); // live | manual
   const [photo, setPhoto] = useState(null); // dataURL
-  const [processedPreview, setProcessedPreview] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | processing | done | error
   const fileInputRef = useRef(null);
-  const canvasRef = useRef(null);
 
   const handleFile = (file) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
       setPhoto(e.target.result);
-      runOCR(e.target.result);
+      runRecognition(file, e.target.result);
     };
     reader.readAsDataURL(file);
   };
 
-  // Preprocess: crop center + grayscale + contrast stretch + upscale, tuned for plate text.
-  const preprocess = (imgEl) => {
-    const canvas = canvasRef.current;
-    
-    // Auto-crop to the middle region (80% width and 35% height)
-    // where license plates are most commonly positioned.
-    const cropWidth = imgEl.naturalWidth * 0.8;
-    const cropHeight = imgEl.naturalHeight * 0.35;
-    const cropX = (imgEl.naturalWidth - cropWidth) / 2;
-    const cropY = (imgEl.naturalHeight - cropHeight) / 2;
-
-    const targetW = Math.min(1200, cropWidth * 2);
-    const scale = targetW / cropWidth;
-    canvas.width = targetW;
-    canvas.height = cropHeight * scale;
-    
-    const ctx = canvas.getContext("2d");
-    
-    // Draw only the cropped center region to canvas
-    ctx.drawImage(
-      imgEl,
-      cropX,
-      cropY,
-      cropWidth,
-      cropHeight,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const d = imgData.data;
-    let min = 255,
-      max = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      d[i] = d[i + 1] = d[i + 2] = gray;
-      if (gray < min) min = gray;
-      if (gray > max) max = gray;
-    }
-    const range = Math.max(1, max - min);
-    for (let i = 0; i < d.length; i += 4) {
-      const v = ((d[i] - min) / range) * 255;
-      // High contrast thresholding curve
-      const enhanced = v < 120 ? Math.max(0, v * 0.6) : Math.min(255, v * 1.3);
-      d[i] = d[i + 1] = d[i + 2] = enhanced;
-    }
-    ctx.putImageData(imgData, 0, 0);
-    return canvas.toDataURL("image/png");
-  };
-
-  const runOCR = async (dataUrl) => {
+  // Sends the uploaded photo straight to the same /api/anpr proxy the live
+  // camera uses (see src/lib/anpr.js) — Plate Recognizer's own model reads
+  // the full uploaded image directly, so the manual-mode canvas cropping
+  // and contrast-stretching preprocessing this used to do for Tesseract is
+  // no longer needed; that work is now done server-side by Plate Recognizer.
+  const runRecognition = async (file, dataUrl) => {
     setStatus("processing");
     try {
-      const img = new Image();
-      img.src = dataUrl;
-      await new Promise((res) => {
-        img.onload = res;
-      });
-      const processedUrl = preprocess(img);
-      setProcessedPreview(processedUrl);
-
-      const { default: Tesseract } = await import("tesseract.js");
-      const result = await Tesseract.recognize(processedUrl, "eng", {
-        tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-      });
-      const text = result.data.text || "";
-      const normalized = normalizeIndianPlate(text);
+      const { plate: rawPlate } = await recognizePlate(file);
+      const normalized = normalizeIndianPlate(rawPlate);
+      if (!normalized) {
+        setStatus("error");
+        onDetected("", dataUrl);
+        return;
+      }
       setStatus("done");
       onDetected(normalized, dataUrl);
     } catch (err) {
-      console.error(err);
+      console.error("Manual upload recognition failed:", err);
       setStatus("error");
       onDetected("", dataUrl);
     }
@@ -100,7 +45,6 @@ export default function PlateCapture({ onDetected, label }) {
 
   const retake = () => {
     setPhoto(null);
-    setProcessedPreview(null);
     setStatus("idle");
     onDetected("", null);
   };
@@ -127,7 +71,6 @@ export default function PlateCapture({ onDetected, label }) {
         />
       </div>
 
-      <canvas ref={canvasRef} style={{ display: "none" }}></canvas>
       <input
         ref={fileInputRef}
         type="file"
@@ -137,7 +80,14 @@ export default function PlateCapture({ onDetected, label }) {
         onChange={(e) => handleFile(e.target.files[0])}
       />
 
-      {mode === "live" && !photo && <LiveCameraCapture onDetected={handleLiveDetected} />}
+      {mode === "live" && !photo && (
+        <LiveCameraCapture
+          onDetected={handleLiveDetected}
+          onLiveRead={(plateText) => {
+            onDetected(plateText, null);
+          }}
+        />
+      )}
 
       {mode === "manual" && !photo && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -171,16 +121,7 @@ export default function PlateCapture({ onDetected, label }) {
 
       {photo && (
         <div className="card" style={{ overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: processedPreview ? "1fr 1fr" : "1fr" }}>
-            <img src={photo} alt="Captured plate" style={{ width: "100%", display: "block", maxHeight: 160, objectFit: "cover" }} />
-            {processedPreview && (
-              <img
-                src={processedPreview}
-                alt="Processed for OCR"
-                style={{ width: "100%", display: "block", maxHeight: 160, objectFit: "cover", filter: "contrast(1.1)" }}
-              />
-            )}
-          </div>
+          <img src={photo} alt="Captured plate" style={{ width: "100%", display: "block", maxHeight: 180, objectFit: "cover" }} />
           <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, borderTop: "1px solid var(--border)" }}>
             <div style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 6 }}>
               {status === "processing" && (
