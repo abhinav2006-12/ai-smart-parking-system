@@ -33,10 +33,11 @@ export default function DashboardTab({ store }) {
   const revenueYesterday = store.revenueLog.filter((r) => isSameDay(r.date, yesterday)).reduce((s, r) => s + r.amount, 0);
 
   const chartData = useMemo(() => {
+    const chartNow = new Date();
     const days = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
+      const d = new Date(chartNow);
+      d.setDate(chartNow.getDate() - i);
       const total = store.revenueLog.filter((r) => isSameDay(r.date, d)).reduce((s, r) => s + r.amount, 0);
 
       // Simulated operating costs/losses baseline + slight variance
@@ -51,7 +52,6 @@ export default function DashboardTab({ store }) {
       });
     }
     return days;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.revenueLog]);
 
   const slotTypeData = useMemo(() => {
@@ -97,7 +97,7 @@ export default function DashboardTab({ store }) {
 
       {/* Graphs Row */}
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
-        <div className="card" style={{ padding: "20px", boxShadow: "var(--shadow-sm)" }}>
+        <div className="card" style={{ padding: "20px", boxShadow: "var(--shadow-sm)", minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 14 }}>Profits & Losses — Last 7 Days</div>
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={chartData}>
@@ -122,7 +122,7 @@ export default function DashboardTab({ store }) {
           </ResponsiveContainer>
         </div>
 
-        <div className="card" style={{ padding: "20px", boxShadow: "var(--shadow-sm)" }}>
+        <div className="card" style={{ padding: "20px", boxShadow: "var(--shadow-sm)", minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 14 }}>Slots by Type</div>
           <div style={{ position: "relative", height: 240 }}>
             <ResponsiveContainer width="100%" height="100%">

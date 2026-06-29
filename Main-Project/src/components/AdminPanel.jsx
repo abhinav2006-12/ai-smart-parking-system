@@ -23,6 +23,7 @@ export default function AdminPanel({ store, updateStore, onLogout }) {
       style={{
         minHeight: "100vh",
         background: "var(--bg)",
+        transition: "background-color 0.3s ease, color 0.3s ease",
       }}
     >
       <button
@@ -74,7 +75,7 @@ export default function AdminPanel({ store, updateStore, onLogout }) {
           inset: "0 auto 0 0",
           zIndex: 30,
           transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
-          transition: "transform .2s ease",
+          transition: "transform .2s ease, background-color 0.3s ease, border-right-color 0.3s ease, color 0.3s ease",
           boxShadow: sidebarOpen ? "var(--shadow-md)" : "none",
         }}
       >

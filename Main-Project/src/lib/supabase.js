@@ -59,12 +59,18 @@ export async function loadStoreFromSupabase() {
       }
     : null;
 
+  const parseTime = (val) => {
+    if (!val) return null;
+    const num = Number(val);
+    return isNaN(num) ? new Date(val).getTime() : num;
+  };
+
   const vehicles = (vehiclesData || []).map((v) => ({
     id: v.id,
     number: v.number,
     type: v.type,
-    entryTime: Number(v.entry_time),
-    exitTime: v.exit_time ? Number(v.exit_time) : null,
+    entryTime: parseTime(v.entry_time),
+    exitTime: parseTime(v.exit_time),
     status: v.status,
     fee: v.fee ? Number(v.fee) : null,
     durationMins: v.duration_mins,
@@ -76,7 +82,7 @@ export async function loadStoreFromSupabase() {
     id: r.id,
     vehicleId: r.vehicle_id,
     amount: Number(r.amount),
-    date: Number(r.date),
+    date: parseTime(r.date),
   }));
 
   if (!settings) {
@@ -101,15 +107,17 @@ export async function syncStoreToSupabase(newStore, oldStore) {
 
   // 1. Sync Settings (if changed)
   if (JSON.stringify(newStore.settings) !== JSON.stringify(oldStore.settings)) {
-    const { error } = await supabase.from("settings").upsert({
-      id: 1,
-      total_slots: newStore.settings.totalSlots,
-      slots_by_type: newStore.settings.slotsByType,
-      rates: newStore.settings.rates,
-      upi_vpa: newStore.settings.upiVpa,
-      upi_payee_name: newStore.settings.upiPayeeName,
-      currency: newStore.settings.currency,
-    });
+    const { error } = await supabase
+      .from("settings")
+      .update({
+        total_slots: newStore.settings.totalSlots,
+        slots_by_type: newStore.settings.slotsByType,
+        rates: newStore.settings.rates,
+        upi_vpa: newStore.settings.upiVpa,
+        upi_payee_name: newStore.settings.upiPayeeName,
+        currency: newStore.settings.currency,
+      })
+      .eq("id", 1);
     if (error) throw error;
   }
 

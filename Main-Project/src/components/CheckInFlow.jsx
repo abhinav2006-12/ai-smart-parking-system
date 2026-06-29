@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import PlateCapture from "./PlateCapture";
 import { uid, fmtDateTime } from "../lib/format";
 import { isLikelyValidIndianPlate, isStrictIndianPlate } from "../lib/plate";
@@ -18,11 +18,21 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   const [error, setError] = useState("");
   const [captureSessionId, setCaptureSessionId] = useState(0);
   const [autoCheckInSuccess, setAutoCheckInSuccess] = useState(null);
-  const autoCheckInTimeoutRef = useRef(null);
+  const [countdown, setCountdown] = useState(10);
+  const autoCheckInIntervalRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoCheckInIntervalRef.current) {
+        clearInterval(autoCheckInIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleEditCorrection = () => {
-    if (autoCheckInTimeoutRef.current) {
-      clearTimeout(autoCheckInTimeoutRef.current);
+    if (autoCheckInIntervalRef.current) {
+      clearInterval(autoCheckInIntervalRef.current);
+      autoCheckInIntervalRef.current = null;
     }
     if (autoCheckInSuccess) {
       // Remove the newly created entry from the store
@@ -198,7 +208,23 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
 
               <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <span className="spin" style={{ width: 12, height: 12, border: "2px solid var(--border)", borderTopColor: "var(--success)", borderRadius: "50%", display: "inline-block" }}></span>
-                <span>Resuming scanner in 10s...</span>
+                <span>
+                  Resuming scanner in{" "}
+                  <span
+                    key={countdown}
+                    className="animate-scale-up"
+                    style={{
+                      display: "inline-block",
+                      fontWeight: 700,
+                      color: "var(--success)",
+                      minWidth: "16px",
+                      textAlign: "center",
+                    }}
+                  >
+                    {countdown}
+                  </span>
+                  s...
+                </span>
               </div>
 
               <div style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
@@ -294,13 +320,22 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 setAutoCheckInSuccess(entry);
                 setError("");
 
-                // Dismiss overlay and restart scanning session after 10 seconds
-                autoCheckInTimeoutRef.current = setTimeout(() => {
-                  setAutoCheckInSuccess(null);
-                  setPlateNumber("");
-                  setPhoto(null);
-                  setCaptureSessionId((id) => id + 1);
-                }, 10000);
+                // Dismiss overlay and restart scanning session after 10 seconds with dynamic countdown
+                if (autoCheckInIntervalRef.current) clearInterval(autoCheckInIntervalRef.current);
+                setCountdown(10);
+                let currentCountdown = 10;
+                autoCheckInIntervalRef.current = setInterval(() => {
+                  currentCountdown -= 1;
+                  setCountdown(currentCountdown);
+                  if (currentCountdown <= 0) {
+                    clearInterval(autoCheckInIntervalRef.current);
+                    autoCheckInIntervalRef.current = null;
+                    setAutoCheckInSuccess(null);
+                    setPlateNumber("");
+                    setPhoto(null);
+                    setCaptureSessionId((id) => id + 1);
+                  }
+                }, 1000);
               }
             }}
           />
