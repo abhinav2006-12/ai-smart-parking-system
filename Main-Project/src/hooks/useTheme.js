@@ -9,10 +9,7 @@ function getInitialTheme() {
   } catch {
     /* localStorage unavailable — fall through to system preference */
   }
-  if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-    return "dark";
-  }
-  return "light";
+  return "dark";
 }
 
 export function useTheme() {
