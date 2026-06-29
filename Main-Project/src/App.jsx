@@ -5,6 +5,7 @@ import { useTheme } from "./hooks/useTheme";
 import HomeScreen from "./components/HomeScreen";
 import AdminLogin from "./components/AdminLogin";
 import AmbientBackground from "./components/AmbientBackground";
+import VehicleLoader from "./components/VehicleLoader";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 const GuestPanel = lazy(() => import("./components/GuestPanel"));
@@ -14,7 +15,7 @@ const GuestPanel = lazy(() => import("./components/GuestPanel"));
 const ADMIN_PATH = "/admin";
 
 export default function App() {
-  const [store, updateStore] = useStore();
+  const [store, updateStore, loading] = useStore();
   const [path, navigate] = useRoute();
   const [theme, toggleTheme] = useTheme();
   const [adminAuthed, setAdminAuthed] = useState(false);
@@ -34,7 +35,9 @@ export default function App() {
 
   let content;
 
-  if (isAdminRoute) {
+  if (loading) {
+    content = <LoadingScreen />;
+  } else if (isAdminRoute) {
     content = !adminAuthed ? (
       <AdminLogin onSuccess={() => setAdminAuthed(true)} onBack={() => navigate("/")} />
     ) : (
@@ -68,9 +71,5 @@ export default function App() {
 }
 
 function LoadingScreen() {
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>
-      Loading…
-    </div>
-  );
+  return <VehicleLoader />;
 }

@@ -37,3 +37,12 @@ export function normalizeIndianPlate(raw) {
 export function isLikelyValidIndianPlate(plate) {
   return /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{1,4}$/.test(plate);
 }
+
+// Stricter check for the canonical 10-character format (2 letters, 2 digits,
+// 1-3 letters, 4 digits — e.g. KL07AB1234). Used to gate auto-triggered
+// actions (like an automatic lookup) where we want to be more conservative
+// than the OCR-tolerant isLikelyValidIndianPlate above, which also accepts
+// older/shorter variants (1-digit district codes, 1-3 digit numbers).
+export function isStrictIndianPlate(plate) {
+  return /^[A-Z]{2}[0-9]{2}[A-Z]{1,3}[0-9]{4}$/.test(plate);
+}

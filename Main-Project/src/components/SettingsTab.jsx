@@ -22,7 +22,7 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
   };
 
   return (
-    <div className="fade-up" style={{ maxWidth: 680, margin: "0 auto" }}>
+    <div className="fade-up" style={{ maxWidth: 680 }}>
       <div className="card" style={{ padding: "24px", boxShadow: "var(--shadow-sm)", marginBottom: 16 }}>
         <h3 className="display" style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
           Parking Slots
