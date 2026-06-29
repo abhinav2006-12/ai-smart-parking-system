@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import PlateCapture from "./PlateCapture";
 import { uid, fmtDateTime } from "../lib/format";
-import { isLikelyValidIndianPlate } from "../lib/plate";
+import { isLikelyValidIndianPlate, isStrictIndianPlate } from "../lib/plate";
 import { PriceChartCard } from "./PriceChartOverlay";
 
 const VEHICLE_TYPES = [
@@ -27,6 +27,15 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   }, [store.vehicles]);
 
   const availableForType = (type) => Math.max(0, (slotsByType[type] || 0) - (occupiedByType[type] || 0));
+
+  // Auto-detector: as soon as the field holds a fully-formed plate — whether
+  // the camera just filled it or the operator typed it — check live whether
+  // that vehicle is already parked. This is derived directly from render
+  // state (no extra effect/state needed) so it updates the instant the plate
+  // becomes valid, rather than waiting for the final Confirm click.
+  const cleanLivePlate = plateNumber.trim().toUpperCase();
+  const liveDuplicate =
+    isStrictIndianPlate(cleanLivePlate) && store.vehicles.find((v) => v.number === cleanLivePlate && v.status === "parked");
 
   const handleSubmit = () => {
     const cleanPlate = plateNumber.trim().toUpperCase();
@@ -165,6 +174,11 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
               Does not quite match the standard format - double check.
             </div>
           )}
+          {liveDuplicate && (
+            <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6, fontWeight: 600 }}>
+              ⚠ Already checked in at {fmtDateTime(liveDuplicate.entryTime)} — this looks like a duplicate.
+            </div>
+          )}
         </div>
 
         <div style={{ marginTop: 14 }}>
@@ -174,7 +188,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
 
         {error && <div style={{ color: "var(--danger)", fontSize: 13, fontWeight: 500, marginTop: 14 }}>{error}</div>}
 
-        <button onClick={handleSubmit} className="btn btn-primary" style={{ width: "100%", marginTop: 22 }}>
+        <button onClick={handleSubmit} disabled={!!liveDuplicate} className="btn btn-primary" style={{ width: "100%", marginTop: 22 }}>
           Confirm Check-In
         </button>
       </div>
