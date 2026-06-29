@@ -178,7 +178,8 @@ export default function AdminLogin({ onSuccess, onBack }) {
                 </svg>
               </span>
               <input
-                type="text"
+                type="email"
+                name="email"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -186,10 +187,10 @@ export default function AdminLogin({ onSuccess, onBack }) {
                 }}
                 onFocus={() => setEmailFocused(true)}
                 onBlur={() => setEmailFocused(false)}
-                placeholder="parkpilot@gmail.com"
+                placeholder="example@gmail.com"
                 disabled={loading || lockoutSecs > 0}
                 autoFocus
-                autoComplete="email"
+                autoComplete="username"
                 spellCheck="false"
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -232,6 +233,7 @@ export default function AdminLogin({ onSuccess, onBack }) {
               </span>
               <input
                 type={showPassword ? "text" : "password"}
+                name="password"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
