@@ -170,7 +170,9 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
           onDetected={(text, photoData) => {
             setPlateNumber(text);
             setPhoto(photoData);
-            tryMatch(text);
+            if (photoData) {
+              tryMatch(text);
+            }
           }}
         />
       </div>

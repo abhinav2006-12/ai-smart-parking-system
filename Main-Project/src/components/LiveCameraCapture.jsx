@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { normalizeIndianPlate } from "../lib/plate";
+import { recognizePlate } from "../lib/anpr";
 
 // ---------------------------------------------------------------------------
 // CONFIG
 // ---------------------------------------------------------------------------
 const SCAN_INTERVAL_MS = 1000; // how often we grab + analyze a frame
-const VOTES_REQUIRED = 3; // consecutive identical readings needed to "lock"
-const SCAN_ZONE = { wPct: 0.7, hPct: 0.22 }; // scanning zone size, % of video frame
+const VOTES_REQUIRED = 1; // Plate Recognizer AI is high-confidence; lock immediately on valid detection
 
 // UI state machine — exactly the 4 states from spec, plus "error" for the
 // camera-permission/hardware failure path (we still need somewhere to put it).
@@ -18,9 +18,8 @@ const PHASE = {
   ERROR: "Camera Unavailable",
 };
 
-export default function LiveCameraCapture({ onDetected }) {
+export default function LiveCameraCapture({ onDetected, onLiveRead }) {
   const videoRef = useRef(null);
-  const overlayCanvasRef = useRef(null); // visible canvas: draws the aiming box
   const captureCanvasRef = useRef(null); // hidden canvas: holds the cropped frame for OCR
   const streamRef = useRef(null);
 
@@ -41,6 +40,7 @@ export default function LiveCameraCapture({ onDetected }) {
   const [phase, setPhase] = useState(PHASE.INITIALIZING);
   const [lockedPlate, setLockedPlate] = useState(null);
   const [lastSeenRaw, setLastSeenRaw] = useState(""); // live "what the AI just saw" readout
+  const [scanError, setScanError] = useState("");
 
   // -------------------------------------------------------------------------
   // CAMERA LIFECYCLE — acquire the stream on mount, release it on unmount.
@@ -108,57 +108,7 @@ export default function LiveCameraCapture({ onDetected }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount
   }, []);
 
-  // -------------------------------------------------------------------------
-  // OVERLAY DRAWING — paints the aiming-guide rectangle on top of the video.
-  // Re-runs on every video resize so the box stays correctly positioned
-  // regardless of the actual camera resolution negotiated by getUserMedia.
-  // -------------------------------------------------------------------------
-  const drawOverlay = useCallback(() => {
-    const video = videoRef.current;
-    const canvas = overlayCanvasRef.current;
-    if (!video || !canvas || !video.videoWidth) return;
-
-    canvas.width = video.clientWidth;
-    canvas.height = video.clientHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const zone = getScanZoneRect(canvas.width, canvas.height);
-
-    // Dim everything outside the scan zone so the operator's eye is drawn
-    // to where the plate actually needs to sit.
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.clearRect(zone.x, zone.y, zone.w, zone.h);
-
-    // Bounding box, color reflects current phase for quick at-a-glance status.
-    ctx.strokeStyle = phase === PHASE.PROCESSING ? "#E0A93B" : phase === PHASE.DETECTED ? "#3FCB87" : "#5B9BB5";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(zone.x, zone.y, zone.w, zone.h);
-
-    // Corner brackets — purely cosmetic, mimics the "targeting" look of
-    // real traffic-camera ANPR overlays.
-    const cornerLen = 22;
-    ctx.lineWidth = 4;
-    [
-      [zone.x, zone.y, 1, 1],
-      [zone.x + zone.w, zone.y, -1, 1],
-      [zone.x, zone.y + zone.h, 1, -1],
-      [zone.x + zone.w, zone.y + zone.h, -1, -1],
-    ].forEach(([cx, cy, dx, dy]) => {
-      ctx.beginPath();
-      ctx.moveTo(cx, cy + cornerLen * dy);
-      ctx.lineTo(cx, cy);
-      ctx.lineTo(cx + cornerLen * dx, cy);
-      ctx.stroke();
-    });
-  }, [phase]);
-
-  useEffect(() => {
-    drawOverlay();
-    window.addEventListener("resize", drawOverlay);
-    return () => window.removeEventListener("resize", drawOverlay);
-  }, [drawOverlay]);
+  // Note: overlay canvas drawing has been removed since we now use the full live camera.
 
   // -------------------------------------------------------------------------
   // FRAME CROPPING — maps the on-screen scan zone (CSS pixels) to the
@@ -171,30 +121,15 @@ export default function LiveCameraCapture({ onDetected }) {
     const captureCanvas = captureCanvasRef.current;
     if (!video || !captureCanvas || !video.videoWidth) return Promise.resolve(null);
 
-    // Scale factor between the video's native pixel dimensions and the
-    // CSS-rendered size of the <video> element on screen.
-    const scaleX = video.videoWidth / video.clientWidth;
-    const scaleY = video.videoHeight / video.clientHeight;
-
-    // Same percentage-based zone as the overlay, but converted into the
-    // video's actual pixel grid rather than the on-screen CSS grid.
-    const cssZone = getScanZoneRect(video.clientWidth, video.clientHeight);
-    const sx = cssZone.x * scaleX;
-    const sy = cssZone.y * scaleY;
-    const sw = cssZone.w * scaleX;
-    const sh = cssZone.h * scaleY;
-
-    captureCanvas.width = sw;
-    captureCanvas.height = sh;
+    // Send the full frame (scaled down to max 1024px width for fast upload)
+    // so Plate Recognizer's AI engine detects the plate wherever it sits.
+    const maxW = 1024;
+    const scale = video.videoWidth > maxW ? maxW / video.videoWidth : 1;
+    captureCanvas.width = video.videoWidth * scale;
+    captureCanvas.height = video.videoHeight * scale;
     const ctx = captureCanvas.getContext("2d");
 
-    // drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh)
-    // We read only the (sx,sy,sw,sh) rectangle from the live video frame —
-    // i.e. only the pixels inside the scanning zone — and paint them at
-    // full size into the small hidden canvas. This is what crops out
-    // background noise and keeps the payload small before it ever reaches
-    // processFrameToAI().
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, captureCanvas.width, captureCanvas.height);
+    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
 
     return new Promise((resolve) => {
       captureCanvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
@@ -202,47 +137,31 @@ export default function LiveCameraCapture({ onDetected }) {
   }, []);
 
   // -------------------------------------------------------------------------
-  // MOCK AI BACKEND CALL
-  // Mocks a POST to a FastAPI-style endpoint: POST /api/anpr/scan with a
-  // multipart image blob, returning { plate: string, confidence: number }.
+  // AI BACKEND CALL — Plate Recognizer Snapshot Cloud API
+  // Posts the cropped scan-zone frame to our own /api/anpr serverless
+  // function (see /api/anpr.js), which holds the Plate Recognizer API
+  // token server-side and proxies the request on. The frame DOES leave the
+  // browser at this point — see README for the updated privacy posture.
   //
-  // NOTE ON ARCHITECTURE: this project's stated privacy model is that plate
-  // images never leave the browser (see README) — so today this function
-  // resolves locally via tesseract.js rather than actually issuing a
-  // network request. It is written so that swapping the body for a real
-  // `fetch("/api/anpr/scan", { method: "POST", body: formData, signal })`
-  // is a drop-in change later: same signature, same abort handling, same
-  // return shape.
+  // AbortController wiring: `signal` is forwarded straight into fetch, so
+  // aborting the controller in the calling effect immediately cancels the
+  // underlying network request rather than just ignoring its eventual
+  // result — this matters for a 1-request-per-second cadence where slow
+  // responses can otherwise pile up.
   // -------------------------------------------------------------------------
   const processFrameToAI = useCallback(async (imageBlob, signal) => {
-    // --- Real network call would look like this ---
-    // const formData = new FormData();
-    // formData.append("frame", imageBlob, "frame.jpg");
-    // const res = await fetch("https://your-fastapi-host/api/anpr/scan", {
-    //   method: "POST",
-    //   body: formData,
-    //   signal, // <-- AbortController wiring goes here
-    // });
-    // if (!res.ok) throw new Error(`ANPR backend error: ${res.status}`);
-    // return res.json(); // { plate, confidence }
-
     if (!imageBlob) return { plate: "", confidence: 0 };
 
-    const dataUrl = await blobToDataUrl(imageBlob);
+    const { plate: rawPlate, confidence } = await recognizePlate(imageBlob, { signal });
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
 
-    const { default: Tesseract } = await import("tesseract.js");
-    const result = await Tesseract.recognize(dataUrl, "eng", {
-      tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-    });
-
-    // Tesseract has no native abort signal, so we check again after the
-    // (potentially slow) recognize() call resolves — if a newer frame has
-    // since been captured, discard this stale result rather than voting on it.
-    if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-
-    const plate = normalizeIndianPlate(result.data.text || "");
-    return { plate, confidence: result.data.confidence ?? 0 };
+    // Plate Recognizer's own OCR is generally cleaner than Tesseract's, but
+    // we still run it through normalizeIndianPlate to collapse any stray
+    // separators and apply the same letter/digit confusion fixes (O/0,
+    // I/1, etc.) for consistency with manually-typed entries elsewhere in
+    // the app.
+    const plate = normalizeIndianPlate(rawPlate);
+    return { plate, confidence };
   }, []);
 
   // -------------------------------------------------------------------------
@@ -287,55 +206,71 @@ export default function LiveCameraCapture({ onDetected }) {
   useEffect(() => {
     if (cameraNotReady) return;
 
-    intervalRef.current = setInterval(async () => {
-      // Race-condition guard #1: if a previous request is still in flight,
-      // abort it now — its result is about to be superseded by a fresher
-      // frame and we never want an old, slow response to land after a new,
-      // fast one and overwrite the UI with stale data.
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+    let active = true;
+    let timeoutId = null;
+
+    async function tick() {
+      if (!active) return;
+
       const controller = new AbortController();
       abortControllerRef.current = controller;
-
-      // Race-condition guard #2: a unique id per request, captured by
-      // closure. Even if .abort() didn't exist, comparing this id against
-      // requestIdRef.current after the await lets us detect "a newer
-      // request has since started" and bail out without touching state.
       const myRequestId = ++requestIdRef.current;
 
       setPhase(PHASE.PROCESSING);
+      setScanError(""); // Clear any previous transient scan error on new attempt
 
       try {
         const blob = await cropFrameToBlob();
-        if (!blob || controller.signal.aborted || myRequestId !== requestIdRef.current) return;
+        if (!blob || !active || controller.signal.aborted || myRequestId !== requestIdRef.current) {
+          if (active) timeoutId = setTimeout(tick, SCAN_INTERVAL_MS);
+          return;
+        }
 
         const photoDataUrl = await blobToDataUrl(blob);
         const { plate } = await processFrameToAI(blob, controller.signal);
 
-        // Stale-response guard: only act on this result if nothing newer
-        // has started since we kicked off this particular frame.
-        if (controller.signal.aborted || myRequestId !== requestIdRef.current) return;
+        if (!active || controller.signal.aborted || myRequestId !== requestIdRef.current) {
+          if (active) timeoutId = setTimeout(tick, SCAN_INTERVAL_MS);
+          return;
+        }
 
-        setLastSeenRaw(plate || "—");
-        registerVote(plate, photoDataUrl);
+        if (plate) {
+          setLastSeenRaw(plate);
+          if (onLiveRead) onLiveRead(plate);
+          registerVote(plate, photoDataUrl);
+        }
       } catch (err) {
-        if (err?.name === "AbortError") return; // expected during normal operation, not a real error
-        console.error("Frame processing failed:", err);
-        setPhase(PHASE.ACTIVE);
+        if (err?.name !== "AbortError" && active) {
+          console.error("Frame processing failed:", err);
+          setScanError(err.message || "Failed to process frame");
+        }
       }
-    }, SCAN_INTERVAL_MS);
+
+      if (active) {
+        timeoutId = setTimeout(tick, SCAN_INTERVAL_MS);
+      }
+    }
+
+    timeoutId = setTimeout(tick, SCAN_INTERVAL_MS);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      active = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- cropFrameToBlob/processFrameToAI/registerVote are stable via useCallback
   }, [cameraNotReady]);
 
   const resetScan = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     voteBufferRef.current = [];
     setLockedPlate(null);
     setLastSeenRaw("");
+    setScanError("");
     setPhase(PHASE.ACTIVE);
   };
 
@@ -357,15 +292,10 @@ export default function LiveCameraCapture({ onDetected }) {
           muted
           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
         />
-        {/* Visible overlay canvas — purely a UI aid, never read from for OCR */}
-        <canvas
-          ref={overlayCanvasRef}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
-        />
         {/* Hidden capture canvas — this is the one cropFrameToBlob() actually reads pixels from */}
         <canvas ref={captureCanvasRef} style={{ display: "none" }} />
 
-        <StatusBadge phase={phase} />
+        <StatusBadge phase={phase} lastSeenRaw={phase === PHASE.DETECTED ? lockedPlate : lastSeenRaw} />
 
         {phase === PHASE.ERROR && (
           <div
@@ -389,6 +319,13 @@ export default function LiveCameraCapture({ onDetected }) {
         )}
       </div>
 
+      {scanError && (
+        <div style={{ color: "var(--danger)", fontSize: 11.5, marginTop: 6, fontWeight: 500, display: "flex", alignItems: "center", gap: 5 }}>
+          <span>⚠</span>
+          <span>ANPR API error: {scanError}</span>
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
         <span>
           Last read: <span className="mono" style={{ color: "var(--ink)", fontWeight: 600 }}>{lastSeenRaw || "—"}</span>
@@ -407,13 +344,7 @@ export default function LiveCameraCapture({ onDetected }) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-// Computes the scan-zone rectangle (in whatever pixel space w/h are given in)
-// centered in the frame, sized as a percentage of the frame dimensions.
-function getScanZoneRect(frameW, frameH) {
-  const w = frameW * SCAN_ZONE.wPct;
-  const h = frameH * SCAN_ZONE.hPct;
-  return { x: (frameW - w) / 2, y: (frameH - h) / 2, w, h };
-}
+
 
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
@@ -424,7 +355,7 @@ function blobToDataUrl(blob) {
   });
 }
 
-function StatusBadge({ phase }) {
+function StatusBadge({ phase, lastSeenRaw }) {
   const palette = {
     [PHASE.INITIALIZING]: { bg: "rgba(91,155,181,0.9)", icon: "spin" },
     [PHASE.ACTIVE]: { bg: "rgba(91,155,181,0.9)", icon: "dot" },
@@ -433,6 +364,16 @@ function StatusBadge({ phase }) {
     [PHASE.ERROR]: { bg: "rgba(226,104,90,0.92)", icon: "warn" },
   };
   const { bg, icon } = palette[phase] || palette[PHASE.ACTIVE];
+
+  const displayText = (() => {
+    if (phase === PHASE.DETECTED && lastSeenRaw) {
+      return `Plate Detected: ${lastSeenRaw}`;
+    }
+    if (phase === PHASE.PROCESSING && lastSeenRaw) {
+      return `Processing Frame... (${lastSeenRaw})`;
+    }
+    return phase;
+  })();
 
   return (
     <div
@@ -466,7 +407,7 @@ function StatusBadge({ phase }) {
           <path d="M12 9v4M12 17h.01M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L14.7 3.86a2 2 0 0 0-3.4 0z" />
         </svg>
       )}
-      {phase}
+      {displayText}
     </div>
   );
 }
