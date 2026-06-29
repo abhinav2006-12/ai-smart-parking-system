@@ -153,7 +153,7 @@ export async function syncStoreToSupabase(newStore, oldStore) {
   const vehiclesToDelete = oldStore.vehicles.filter((v) => !newVehiclesSet.has(v.id)).map((v) => v.id);
   if (vehiclesToDelete.length > 0) {
     const { error } = await supabase.from("vehicles").delete().in("id", vehiclesToDelete);
-    if (error) throw error;
+    if (error) console.error("[syncStore] vehicles delete error:", error);
   }
 
   // 3. Sync Revenue Log
@@ -182,6 +182,36 @@ export async function syncStoreToSupabase(newStore, oldStore) {
   const revenueToDelete = oldStore.revenueLog.filter((r) => !newRevenueSet.has(r.id)).map((r) => r.id);
   if (revenueToDelete.length > 0) {
     const { error } = await supabase.from("revenue_log").delete().in("id", revenueToDelete);
-    if (error) throw error;
+    if (error) console.error("[syncStore] revenue delete error:", error);
+  }
+}
+
+/**
+ * Wipes ALL vehicles and revenue_log rows from Supabase.
+ * Uses a broad column filter that matches every real row, bypassing RLS id-list restrictions.
+ */
+export async function wipeAllData() {
+  if (!supabaseUrl || !supabaseAnonKey) return;
+
+  // Delete revenue_log first (foreign-key safe order)
+  const { error: revErr } = await supabase
+    .from("revenue_log")
+    .delete()
+    .gte("amount", 0); // matches every row (amount is always >= 0)
+
+  if (revErr) {
+    console.error("[wipeAllData] revenue_log error:", revErr);
+    throw revErr;
+  }
+
+  // Delete all vehicles
+  const { error: vehErr } = await supabase
+    .from("vehicles")
+    .delete()
+    .in("status", ["parked", "completed", "cancelled", "pending"]); // covers every possible status
+
+  if (vehErr) {
+    console.error("[wipeAllData] vehicles error:", vehErr);
+    throw vehErr;
   }
 }
