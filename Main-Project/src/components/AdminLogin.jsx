@@ -98,16 +98,19 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBl
             top: 18,
             left: "50%",
             transform: "translateX(-50%)",
-            background: "#7C3AED",
-            color: "#fff",
-            fontSize: 12,
+            background: "rgba(124, 58, 237, 0.15)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(124, 58, 237, 0.35)",
+            color: "#7C3AED",
+            fontSize: 12.5,
             fontWeight: 600,
             padding: "9px 18px",
-            borderRadius: 10,
+            borderRadius: 12,
             display: "flex",
             alignItems: "center",
             gap: 8,
-            boxShadow: "0 4px 18px rgba(124,58,237,0.35)",
+            boxShadow: "0 8px 32px rgba(124, 58, 237, 0.12)",
             whiteSpace: "nowrap",
             zIndex: 99,
           }}
@@ -130,16 +133,19 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBl
             top: 18,
             left: "50%",
             transform: "translateX(-50%)",
-            background: "#DC2626",
-            color: "#fff",
-            fontSize: 12,
+            background: "rgba(220, 38, 38, 0.12)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(220, 38, 38, 0.3)",
+            color: "#DC2626",
+            fontSize: 12.5,
             fontWeight: 600,
             padding: "9px 18px",
-            borderRadius: 10,
+            borderRadius: 12,
             display: "flex",
             alignItems: "center",
             gap: 8,
-            boxShadow: "0 4px 18px rgba(220,38,38,0.35)",
+            boxShadow: "0 8px 32px rgba(220, 38, 38, 0.12)",
             whiteSpace: "nowrap",
             zIndex: 99,
           }}
@@ -154,10 +160,10 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBl
               type="button"
               onClick={onSessionReset}
               style={{
-                background: "rgba(255, 255, 255, 0.22)",
-                border: "none",
+                background: "rgba(220, 38, 38, 0.15)",
+                border: "1px solid rgba(220, 38, 38, 0.3)",
                 borderRadius: "6px",
-                color: "#fff",
+                color: "#DC2626",
                 cursor: "pointer",
                 fontSize: "11px",
                 fontWeight: 700,
@@ -166,8 +172,14 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBl
                 textTransform: "uppercase",
                 transition: "all 0.15s ease",
               }}
-              onMouseOver={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.35)")}
-              onMouseOut={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.22)")}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = "#DC2626";
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = "rgba(220, 38, 38, 0.15)";
+                e.currentTarget.style.color = "#DC2626";
+              }}
             >
               Reset
             </button>
@@ -398,10 +410,12 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBl
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "var(--danger-soft)",
+              background: "rgba(220, 38, 38, 0.08)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
               padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid rgba(var(--danger-rgb), 0.15)",
+              borderRadius: 10,
+              border: "1px solid rgba(220, 38, 38, 0.2)",
             }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
