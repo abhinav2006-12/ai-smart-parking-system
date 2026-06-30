@@ -152,7 +152,7 @@ export default function LiveCameraCapture({ onDetected, onLiveRead }) {
   const processFrameToAI = useCallback(async (imageBlob, signal) => {
     if (!imageBlob) return { plate: "", confidence: 0 };
 
-    const { plate: rawPlate, confidence } = await recognizePlate(imageBlob, { signal });
+    const { plate: rawPlate, confidence, raw } = await recognizePlate(imageBlob, { signal });
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
 
     // Plate Recognizer's own OCR is generally cleaner than Tesseract's, but
@@ -161,7 +161,7 @@ export default function LiveCameraCapture({ onDetected, onLiveRead }) {
     // I/1, etc.) for consistency with manually-typed entries elsewhere in
     // the app.
     const plate = normalizeIndianPlate(rawPlate);
-    return { plate, confidence };
+    return { plate, confidence, raw };
   }, []);
 
   // -------------------------------------------------------------------------
@@ -171,7 +171,7 @@ export default function LiveCameraCapture({ onDetected, onLiveRead }) {
   // do we "lock" the plate and surface it to the parent via onDetected.
   // -------------------------------------------------------------------------
   const registerVote = useCallback(
-    (plate, photoDataUrl) => {
+    (plate, photoDataUrl, raw) => {
       const buf = voteBufferRef.current;
       buf.push(plate);
       if (buf.length > VOTES_REQUIRED) buf.shift(); // keep only the most recent N
@@ -181,7 +181,7 @@ export default function LiveCameraCapture({ onDetected, onLiveRead }) {
       if (isUnanimous) {
         setLockedPlate(plate);
         setPhase(PHASE.DETECTED);
-        onDetected(plate, photoDataUrl);
+        onDetected(plate, photoDataUrl, raw);
         // Reset so a *different* plate can still be picked up if the
         // operator moves on to the next vehicle without leaving the screen.
         voteBufferRef.current = [];
@@ -227,7 +227,7 @@ export default function LiveCameraCapture({ onDetected, onLiveRead }) {
         }
 
         const photoDataUrl = await blobToDataUrl(blob);
-        const { plate } = await processFrameToAI(blob, controller.signal);
+        const { plate, raw } = await processFrameToAI(blob, controller.signal);
 
         if (!active || controller.signal.aborted || myRequestId !== requestIdRef.current) {
           if (active) timeoutId = setTimeout(tick, SCAN_INTERVAL_MS);
@@ -237,7 +237,7 @@ export default function LiveCameraCapture({ onDetected, onLiveRead }) {
         if (plate) {
           setLastSeenRaw(plate);
           if (onLiveRead) onLiveRead(plate);
-          registerVote(plate, photoDataUrl);
+          registerVote(plate, photoDataUrl, raw);
         }
       } catch (err) {
         if (err?.name !== "AbortError" && active) {

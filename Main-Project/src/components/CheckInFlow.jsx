@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import PlateCapture from "./PlateCapture";
 import { uid, fmtDateTime } from "../lib/format";
-import { isLikelyValidIndianPlate, isStrictIndianPlate } from "../lib/plate";
+import { isLikelyValidIndianPlate, isStrictIndianPlate, detectEVFromPlate } from "../lib/plate";
 import { PriceChartCard } from "./PriceChartOverlay";
 
 const VEHICLE_TYPES = [
@@ -283,7 +283,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
           <PlateCapture
             key={captureSessionId}
             label="Vehicle Photo"
-            onDetected={(text, photoData) => {
+            onDetected={async (text, photoData, raw) => {
               setPlateNumber(text);
               setPhoto(photoData);
 
@@ -292,9 +292,21 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 const cleanPlate = text.trim().toUpperCase();
                 if (!cleanPlate) return;
 
-                // Validate slots and existing status first
-                if (availableForType(vehicleType) <= 0) {
-                  setError(`No ${vehicleType} slots available right now.`);
+                // Detect if the plate has a green background (EV registration)
+                let activeVehicleType = vehicleType;
+                try {
+                  const isEV = await detectEVFromPlate(photoData, raw);
+                  if (isEV) {
+                    activeVehicleType = "ev";
+                    setVehicleType("ev");
+                  }
+                } catch (err) {
+                  console.error("EV detection from plate color failed:", err);
+                }
+
+                // Validate slots and existing status first using activeVehicleType
+                if (availableForType(activeVehicleType) <= 0) {
+                  setError(`No ${activeVehicleType} slots available right now.`);
                   return;
                 }
                 const alreadyParked = store.vehicles.find((v) => v.number === cleanPlate && v.status === "parked");
@@ -307,7 +319,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 const entry = {
                   id: uid(),
                   number: cleanPlate,
-                  type: vehicleType,
+                  type: activeVehicleType,
                   entryTime: Date.now(),
                   exitTime: null,
                   status: "parked",
