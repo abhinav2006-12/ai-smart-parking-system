@@ -7,7 +7,7 @@ import { PriceChartCard } from "./PriceChartOverlay";
 const VEHICLE_TYPES = [
   { key: "standard", label: "Standard" },
   { key: "ev", label: "EV" },
-  { key: "disabled", label: "Disabled" },
+  { key: "taxi", label: "Taxi" },
 ];
 
 export default function CheckInFlow({ store, updateStore, onDone }) {
@@ -18,13 +18,19 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   const [error, setError] = useState("");
   const [captureSessionId, setCaptureSessionId] = useState(0);
   const [autoCheckInSuccess, setAutoCheckInSuccess] = useState(null);
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(5);
+  const [alreadyCheckedInAlert, setAlreadyCheckedInAlert] = useState(null); // { number, entryTime }
+  const [alertCountdown, setAlertCountdown] = useState(5);
   const autoCheckInIntervalRef = useRef(null);
+  const alertIntervalRef = useRef(null);
 
   useEffect(() => {
     return () => {
       if (autoCheckInIntervalRef.current) {
         clearInterval(autoCheckInIntervalRef.current);
+      }
+      if (alertIntervalRef.current) {
+        clearInterval(alertIntervalRef.current);
       }
     };
   }, []);
@@ -49,7 +55,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
 
   const slotsByType = store.settings.slotsByType;
   const occupiedByType = useMemo(() => {
-    const counts = { standard: 0, ev: 0, disabled: 0 };
+    const counts = { standard: 0, ev: 0, taxi: 0 };
     store.vehicles.filter((v) => v.status === "parked").forEach((v) => {
       counts[v.type] = (counts[v.type] || 0) + 1;
     });
@@ -144,6 +150,102 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 22, flexWrap: "wrap", maxWidth: 1100, margin: "10px auto" }}>
       <div className="fade-up card" style={{ width: "100%", maxWidth: 460, padding: "28px 26px", boxShadow: "var(--shadow-sm)", position: "relative", overflow: "hidden" }}>
+        {/* ── Already Checked-In Alert Modal ── */}
+        {alreadyCheckedInAlert && (
+          <div
+            className="animate-fade-in"
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 100,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(255, 255, 255, 0.4)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            }}
+          >
+            <div
+              className="card animate-scale-up"
+              style={{
+                width: "90%",
+                maxWidth: 360,
+                padding: "30px 24px",
+                textAlign: "center",
+                boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+                border: "1.5px solid var(--warning)",
+                background: "var(--surface)",
+              }}
+            >
+              {/* Warning Icon */}
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "var(--warning-soft)",
+                  color: "var(--warning)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px",
+                  fontSize: 26,
+                }}
+              >
+                ⚠
+              </div>
+              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "var(--warning)" }}>Already Checked In</h3>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: "6px 0 16px" }}>
+                This vehicle is already parked in the lot.
+              </p>
+
+              {/* Plate */}
+              <div className="mono" style={{ fontSize: 24, fontWeight: 700, letterSpacing: "0.03em", background: "var(--warning-soft)", padding: "12px 16px", borderRadius: 8, color: "var(--warning)", border: "1px solid var(--warning)", marginBottom: 16 }}>
+                {alreadyCheckedInAlert.number}
+              </div>
+
+              {/* Entry time info */}
+              <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 18 }}>
+                Checked in at <span style={{ color: "var(--ink)", fontWeight: 600 }}>{fmtDateTime(alreadyCheckedInAlert.entryTime)}</span>
+              </div>
+
+              {/* Countdown */}
+              <div style={{ fontSize: 11.5, color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <span className="spin" style={{ width: 12, height: 12, border: "2px solid var(--border)", borderTopColor: "var(--warning)", borderRadius: "50%", display: "inline-block" }}></span>
+                <span>
+                  Resuming scanner in{" "}
+                  <span
+                    key={alertCountdown}
+                    className="animate-scale-up"
+                    style={{ display: "inline-block", fontWeight: 700, color: "var(--warning)", minWidth: "16px", textAlign: "center" }}
+                  >
+                    {alertCountdown}
+                  </span>
+                  s...
+                </span>
+              </div>
+
+              {/* Dismiss now button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (alertIntervalRef.current) { clearInterval(alertIntervalRef.current); alertIntervalRef.current = null; }
+                  setAlreadyCheckedInAlert(null);
+                  setPlateNumber("");
+                  setPhoto(null);
+                  setCaptureSessionId((id) => id + 1);
+                }}
+                className="btn btn-secondary"
+                style={{ width: "100%", marginTop: 16, padding: "7px 12px", fontSize: 13 }}
+              >
+                Dismiss &amp; Scan Again
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Auto Check-In Success Modal ── */}
         {autoCheckInSuccess && (
           <div
             className="animate-fade-in"
@@ -311,7 +413,23 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 }
                 const alreadyParked = store.vehicles.find((v) => v.number === cleanPlate && v.status === "parked");
                 if (alreadyParked) {
-                  setError("This vehicle is already checked in.");
+                  // Show the "already checked in" alert modal instead of a plain error
+                  setAlreadyCheckedInAlert({ number: cleanPlate, entryTime: alreadyParked.entryTime });
+                  setAlertCountdown(5);
+                  if (alertIntervalRef.current) clearInterval(alertIntervalRef.current);
+                  let ac = 5;
+                  alertIntervalRef.current = setInterval(() => {
+                    ac -= 1;
+                    setAlertCountdown(ac);
+                    if (ac <= 0) {
+                      clearInterval(alertIntervalRef.current);
+                      alertIntervalRef.current = null;
+                      setAlreadyCheckedInAlert(null);
+                      setPlateNumber("");
+                      setPhoto(null);
+                      setCaptureSessionId((id) => id + 1);
+                    }
+                  }, 1000);
                   return;
                 }
 
@@ -332,10 +450,10 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 setAutoCheckInSuccess(entry);
                 setError("");
 
-                // Dismiss overlay and restart scanning session after 10 seconds with dynamic countdown
+                // Dismiss overlay and restart scanning session after 5 seconds with dynamic countdown
                 if (autoCheckInIntervalRef.current) clearInterval(autoCheckInIntervalRef.current);
-                setCountdown(10);
-                let currentCountdown = 10;
+                setCountdown(5);
+                let currentCountdown = 5;
                 autoCheckInIntervalRef.current = setInterval(() => {
                   currentCountdown -= 1;
                   setCountdown(currentCountdown);

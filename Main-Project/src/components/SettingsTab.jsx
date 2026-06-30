@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { wipeAllData } from "../lib/supabase";
 
-const TYPES = ["standard", "ev", "disabled"];
+const TYPES = ["standard", "ev", "taxi"];
 
 export default function SettingsTab({ store, updateStore, onLogout }) {
   const [local, setLocal] = useState(() => JSON.parse(JSON.stringify(store.settings)));
@@ -14,7 +14,7 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
   const setRate = (type, field, val) =>
     setLocal((prev) => ({ ...prev, rates: { ...prev.rates, [type]: { ...prev.rates[type], [field]: Math.max(0, Number(val) || 0) } } }));
 
-  const totalFromSlots = local.slotsByType.standard + local.slotsByType.ev + local.slotsByType.disabled;
+  const totalFromSlots = local.slotsByType.standard + local.slotsByType.ev + local.slotsByType.taxi;
 
   const save = () => {
     const next = { ...local, totalSlots: totalFromSlots };

@@ -27,7 +27,7 @@ const HEARTBEAT_INTERVAL = 5 * 60 * 1000;
 const VERIFY_INTERVAL = 2 * 1000;
 
 export default function App() {
-  const [store, updateStore, loading] = useStore();
+  const [store, updateStore, loading, refreshStore] = useStore();
   const [path, navigate] = useRoute();
   const isAdminRoute = path.replace(/\/+$/, "") === ADMIN_PATH || path === ADMIN_PATH;
   const [theme, toggleTheme] = useTheme();
@@ -170,6 +170,7 @@ export default function App() {
           onLogout={handleAdminLogout}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onRefresh={refreshStore}
         />
       </Suspense>
     );
