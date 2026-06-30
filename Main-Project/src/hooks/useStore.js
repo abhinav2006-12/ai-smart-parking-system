@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { loadStore, saveStore, defaultStore } from "../lib/storage";
+import { loadStore, saveStore, defaultStore, migrateStore } from "../lib/storage";
 import { loadStoreFromSupabase, syncStoreToSupabase, supabase } from "../lib/supabase";
 
 // Helper: map a raw Supabase vehicle row (snake_case) to camelCase
@@ -46,10 +46,12 @@ export function useStore() {
       try {
         const cloudData = await loadStoreFromSupabase();
         if (cloudData) {
+          // Migrate any legacy "disabled" type keys before using the data
+          const migratedData = migrateStore(cloudData) || cloudData;
           // Always write fresh Supabase data to localStorage, overwriting any stale cache
-          saveStore(cloudData);
-          setStore(cloudData);
-          lastSavedStoreRef.current = JSON.parse(JSON.stringify(cloudData));
+          saveStore(migratedData);
+          setStore(migratedData);
+          lastSavedStoreRef.current = JSON.parse(JSON.stringify(migratedData));
         } else {
           // If no cloud settings exist, populate defaults from localStorage or default template
           const localData = loadStore();
