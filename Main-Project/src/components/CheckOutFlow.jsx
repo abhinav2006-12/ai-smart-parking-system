@@ -316,19 +316,19 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
 
       <div style={{ marginTop: 16 }}>
         <label>Vehicle Number (confirm / edit)</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            className="mono"
-            value={plateNumber}
-            onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-            placeholder="KL07AB1234"
-            style={{ fontWeight: 600, letterSpacing: "0.02em" }}
-          />
-          <button type="button" onClick={() => tryMatch(plateNumber)} className="btn btn-secondary" style={{ flexShrink: 0 }}>
-            Find
-          </button>
-        </div>
+        <input
+          type="text"
+          className="mono"
+          value={plateNumber}
+          onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              tryMatch(plateNumber);
+            }
+          }}
+          placeholder="KL07AB1234"
+          style={{ fontWeight: 600, letterSpacing: "0.02em" }}
+        />
       </div>
 
       {matched && (

@@ -18,7 +18,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   const [error, setError] = useState("");
   const [captureSessionId, setCaptureSessionId] = useState(0);
   const [autoCheckInSuccess, setAutoCheckInSuccess] = useState(null);
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(10);
   const [alreadyCheckedInAlert, setAlreadyCheckedInAlert] = useState(null); // { number, entryTime }
   const [alertCountdown, setAlertCountdown] = useState(5);
   const autoCheckInIntervalRef = useRef(null);
@@ -291,7 +291,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 </svg>
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "var(--ink)" }}>Auto Checked In</h3>
-              <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 16px" }}>Vehicle successfully registered</p>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 16px" }}>Vehicle successfully registered. Thank you!</p>
               
               <div className="mono" style={{ fontSize: 24, fontWeight: 700, letterSpacing: "0.03em", background: "var(--surface-muted)", padding: "12px 16px", borderRadius: 8, color: "var(--ink)", border: "1px solid var(--border)", marginBottom: 16 }}>
                 {autoCheckInSuccess.number}
@@ -450,10 +450,10 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 setAutoCheckInSuccess(entry);
                 setError("");
 
-                // Dismiss overlay and restart scanning session after 5 seconds with dynamic countdown
+                // Dismiss overlay and restart scanning session after 10 seconds with dynamic countdown
                 if (autoCheckInIntervalRef.current) clearInterval(autoCheckInIntervalRef.current);
-                setCountdown(5);
-                let currentCountdown = 5;
+                setCountdown(10);
+                let currentCountdown = 10;
                 autoCheckInIntervalRef.current = setInterval(() => {
                   currentCountdown -= 1;
                   setCountdown(currentCountdown);

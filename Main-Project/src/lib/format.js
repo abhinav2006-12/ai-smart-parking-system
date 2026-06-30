@@ -33,8 +33,8 @@ export function durationMinutes(start, end) {
 export function formatDuration(mins) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  if (h <= 0) return `${m} min`;
-  return `${h} hr ${m} min`;
+  if (h <= 0) return `${m} mnt`;
+  return `${h} hr ${m} mnt`;
 }
 
 export function buildUpiUri(settings, amount, note) {
