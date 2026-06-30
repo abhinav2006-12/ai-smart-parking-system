@@ -89,7 +89,7 @@ export default function AdminPanel({ store, updateStore, onLogout, theme, onTogg
             width: "100%",
           }}
         >
-          {tab === "dashboard" && <DashboardTab store={store} />}
+          {tab === "dashboard" && <DashboardTab store={store} onRefresh={onRefresh} />}
           {tab === "vehicles" && <VehicleListingTab store={store} onRefresh={onRefresh} />}
           {tab === "settings" && (
             <SettingsTab store={store} updateStore={updateStore} onLogout={onLogout} />
