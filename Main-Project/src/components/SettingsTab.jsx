@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { wipeAllData } from "../lib/supabase";
 
-const TYPES = ["standard", "ev", "disabled"];
+const TYPES = ["standard", "ev", "taxi"];
 
 export default function SettingsTab({ store, updateStore, onLogout }) {
   const [local, setLocal] = useState(() => JSON.parse(JSON.stringify(store.settings)));
@@ -14,7 +14,7 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
   const setRate = (type, field, val) =>
     setLocal((prev) => ({ ...prev, rates: { ...prev.rates, [type]: { ...prev.rates[type], [field]: Math.max(0, Number(val) || 0) } } }));
 
-  const totalFromSlots = local.slotsByType.standard + local.slotsByType.ev + local.slotsByType.disabled;
+  const totalFromSlots = local.slotsByType.standard + local.slotsByType.ev + local.slotsByType.taxi;
 
   const save = () => {
     const next = { ...local, totalSlots: totalFromSlots };
@@ -98,11 +98,11 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
                 <div style={{ fontWeight: 700, fontSize: 14, textTransform: "capitalize", paddingBottom: 11 }}>{type}</div>
                 <div>
                   <label>Rate (₹/hr)</label>
-                  <input type="number" min="0" value={local.rates[type].hourly} onChange={(e) => setRate(type, "hourly", e.target.value)} />
+                  <input type="number" min="0" value={(local.rates[type] || { hourly: 0 }).hourly} onChange={(e) => setRate(type, "hourly", e.target.value)} />
                 </div>
                 <div>
                   <label>Min. billable hours</label>
-                  <input type="number" min="1" value={local.rates[type].minHours} onChange={(e) => setRate(type, "minHours", e.target.value)} />
+                  <input type="number" min="1" value={(local.rates[type] || { minHours: 1 }).minHours} onChange={(e) => setRate(type, "minHours", e.target.value)} />
                 </div>
               </div>
             ))}

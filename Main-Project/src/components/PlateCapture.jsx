@@ -27,15 +27,15 @@ export default function PlateCapture({ onDetected, label }) {
   const runRecognition = async (file, dataUrl) => {
     setStatus("processing");
     try {
-      const { plate: rawPlate } = await recognizePlate(file);
+      const { plate: rawPlate, raw } = await recognizePlate(file);
       const normalized = normalizeIndianPlate(rawPlate);
       if (!normalized) {
         setStatus("error");
-        onDetected("", dataUrl);
+        onDetected("", dataUrl, null);
         return;
       }
       setStatus("done");
-      onDetected(normalized, dataUrl);
+      onDetected(normalized, dataUrl, raw);
     } catch (err) {
       console.error("Manual upload recognition failed:", err);
       setStatus("error");
@@ -49,10 +49,10 @@ export default function PlateCapture({ onDetected, label }) {
     onDetected("", null);
   };
 
-  const handleLiveDetected = (plateText, photoDataUrl) => {
+  const handleLiveDetected = (plateText, photoDataUrl, raw) => {
     setPhoto(photoDataUrl);
     setStatus("done");
-    onDetected(plateText, photoDataUrl);
+    onDetected(plateText, photoDataUrl, raw);
   };
 
   return (

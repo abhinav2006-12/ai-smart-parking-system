@@ -3,11 +3,13 @@ import { fmtMoney, fmtDateTime, formatDuration } from "../lib/format";
 
 const PAGE_SIZE = 8;
 
-export default function VehicleListingTab({ store }) {
+export default function VehicleListingTab({ store, onRefresh }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
 
   const filtered = useMemo(() => {
     return store.vehicles
@@ -27,9 +29,61 @@ export default function VehicleListingTab({ store }) {
     setPage(1);
   }, [search, statusFilter, typeFilter]);
 
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      if (onRefresh) await onRefresh();
+    } finally {
+      setRefreshing(false);
+      setLastRefreshed(new Date());
+      setPage(1);
+    }
+  };
+
   return (
     <div className="fade-up">
       <div className="card" style={{ padding: "20px", boxShadow: "var(--shadow-sm)" }}>
+        {/* Header row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <h2 className="display" style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Vehicle Listing</h2>
+            {lastRefreshed && (
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>
+                Last refreshed: {lastRefreshed.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
+          <button
+            id="vehicle-listing-refresh-btn"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="btn btn-secondary"
+            title="Refresh vehicle list from database"
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", fontSize: 13, fontWeight: 600, minWidth: 110 }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              style={{
+                transition: "transform 0.4s ease",
+                transform: refreshing ? "rotate(360deg)" : "rotate(0deg)",
+                animation: refreshing ? "spin 0.7s linear infinite" : "none",
+              }}
+            >
+              <path d="M23 4v6h-6" />
+              <path d="M1 20v-6h6" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
+        </div>
+
+        {/* Filters */}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
           <div style={{ flex: "2 1 220px" }}>
             <input type="text" placeholder="Search vehicle number…" value={search} onChange={(e) => setSearch(e.target.value)} className="mono" />
@@ -46,7 +100,7 @@ export default function VehicleListingTab({ store }) {
               <option value="all">All Types</option>
               <option value="standard">Standard</option>
               <option value="ev">EV</option>
-              <option value="disabled">Disabled</option>
+              <option value="taxi">Taxi</option>
             </select>
           </div>
         </div>

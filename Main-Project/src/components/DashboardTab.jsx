@@ -66,7 +66,7 @@ export default function DashboardTab({ store }) {
   }, [store.revenueLog]);
 
   const slotTypeData = useMemo(() => {
-    const occupied = { standard: 0, ev: 0, disabled: 0 };
+    const occupied = { standard: 0, ev: 0, taxi: 0 };
     store.vehicles.filter((v) => v.status === "parked").forEach((v) => {
       occupied[v.type] = (occupied[v.type] || 0) + 1;
     });
@@ -74,7 +74,7 @@ export default function DashboardTab({ store }) {
     return [
       { name: "Standard", value: Math.max(0, (store.settings.slotsByType.standard || 0) - (occupied.standard || 0)), color: "#E53935" },
       { name: "EV", value: Math.max(0, (store.settings.slotsByType.ev || 0) - (occupied.ev || 0)), color: "#1E88E5" },
-      { name: "Disabled", value: Math.max(0, (store.settings.slotsByType.disabled || 0) - (occupied.disabled || 0)), color: "#43A047" },
+      { name: "Taxi", value: Math.max(0, (store.settings.slotsByType.taxi || 0) - (occupied.taxi || 0)), color: "#43A047" },
     ];
   }, [store.settings.slotsByType, store.vehicles]);
 
