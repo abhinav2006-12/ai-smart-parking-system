@@ -7,16 +7,48 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [plateNumber, setPlateNumber] = useState("");
   const [photo, setPhoto] = useState(null);
   const [matched, setMatched] = useState(null);
-  const [notFoundMsg, setNotFoundMsg] = useState("");
+  const [notFoundAlert, setNotFoundAlert] = useState(null); // { number }
+  const [notFoundCountdown, setNotFoundCountdown] = useState(5);
   const [paid, setPaid] = useState(false);
   const [qrUrl, setQrUrl] = useState(null);
 
-  // Bumped every time we want a genuinely fresh camera session (not just
-  // cleared text). React only tears down and remounts a component when its
-  // `key` changes — without this, resetting plateNumber/photo back to
-  // empty would NOT reset LiveCameraCapture's internal vote buffer or
-  // locked-plate state, since the component instance itself never unmounts.
+  // Bumped every time we want a genuinely fresh camera session
   const [captureSessionId, setCaptureSessionId] = useState(0);
+  const notFoundIntervalRef = useRef(null);
+  const lastAutoCheckedRef = useRef("");
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (notFoundIntervalRef.current) clearInterval(notFoundIntervalRef.current);
+    };
+  }, []);
+
+  const resetScanner = () => {
+    setPlateNumber("");
+    setPhoto(null);
+    setMatched(null);
+    setNotFoundAlert(null);
+    lastAutoCheckedRef.current = "";
+    setCaptureSessionId((n) => n + 1);
+  };
+
+  const showNotFoundAlert = (plateNum) => {
+    setNotFoundAlert({ number: plateNum });
+    setNotFoundCountdown(5);
+    if (notFoundIntervalRef.current) clearInterval(notFoundIntervalRef.current);
+    let cd = 5;
+    notFoundIntervalRef.current = setInterval(() => {
+      cd -= 1;
+      setNotFoundCountdown(cd);
+      if (cd <= 0) {
+        clearInterval(notFoundIntervalRef.current);
+        notFoundIntervalRef.current = null;
+        setNotFoundAlert(null);
+        resetScanner();
+      }
+    }, 1000);
+  };
 
   const tryMatch = (plate) => {
     const cleanPlate = plate.trim().toUpperCase();
@@ -32,39 +64,26 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
       const hours = Math.max(rate.minHours, Math.ceil(mins / 60));
       const fee = hours * rate.hourly;
       setMatched({ ...found, exitTimePreview: now, durationMinsPreview: mins, hoursBilled: hours, feePreview: fee });
-      setNotFoundMsg("");
     } else {
       setMatched(null);
-      setNotFoundMsg("No parked vehicle found with that number. Check the plate or search it up in Admin.");
+      showNotFoundAlert(cleanPlate);
     }
   };
 
-  // Tracks the last plate string we already auto-triggered a lookup for, so
-  // we don't re-fire tryMatch on every keystroke/render once a plate has
-  // settled — only when the *value itself* changes to a new valid plate.
-  const lastAutoCheckedRef = useRef("");
-
-  // Auto-detector: the moment the field holds a strict, fully-formed Indian
-  // plate (10 chars, SS NN LLL NNNN) — whether it got there by the camera
-  // auto-filling it or the operator typing/editing it by hand — we
-  // automatically look the vehicle up. No manual "Find" click required.
-  // Loosely-formatted/partial plates are left alone: we don't want to spam
-  // lookups mid-keystroke while someone is still typing.
+  // Auto-detect: fires tryMatch as soon as a valid strict plate is in the field
   useEffect(() => {
     const clean = plateNumber.trim().toUpperCase();
     if (isStrictIndianPlate(clean) && clean !== lastAutoCheckedRef.current) {
       lastAutoCheckedRef.current = clean;
       tryMatch(clean);
     }
-    // Clears the "already checked" memo once the field is emptied/edited
-    // back down below the strict length, so re-entering the same plate
-    // later (e.g. after a Retake) still triggers a fresh lookup.
     if (!isStrictIndianPlate(clean)) {
       lastAutoCheckedRef.current = "";
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tryMatch reads `store`/`matched` via closure each render; re-running on plateNumber alone is intentional
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plateNumber]);
 
+  // Generate QR code when a vehicle is matched
   useEffect(() => {
     if (matched && !paid) {
       import("qrcode").then(({ default: QRCode }) =>
@@ -90,12 +109,16 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         }
         return v;
       });
-      const revenueLog = [...prev.revenueLog, { id: uid(), vehicleId: matched.id, amount: matched.feePreview, date: matched.exitTimePreview }];
+      const revenueLog = [
+        ...prev.revenueLog,
+        { id: uid(), vehicleId: matched.id, amount: matched.feePreview, date: matched.exitTimePreview },
+      ];
       return { ...prev, vehicles, revenueLog };
     });
     setPaid(true);
   };
 
+  // ── Payment success screen ──────────────────────────────────────────────
   if (paid) {
     return (
       <div className="fade-up card" style={{ maxWidth: 420, margin: "20px auto", padding: "30px 26px", textAlign: "center", boxShadow: "var(--shadow-sm)" }}>
@@ -129,18 +152,13 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
           <button
             onClick={() => {
-              // Resets every piece of local state back to a blank slate —
-              // this is what "resets the live camera for the next vehicle"
-              // means in practice: PlateCapture/LiveCameraCapture re-mount
-              // fresh (their internal vote buffer + photo state start over)
-              // because plateNumber/photo going back to null/"" makes the
-              // capture flow render as if newly opened.
               setPlateNumber("");
               setPhoto(null);
               setMatched(null);
-              setNotFoundMsg("");
+              setNotFoundAlert(null);
               setPaid(false);
               setQrUrl(null);
+              lastAutoCheckedRef.current = "";
               setCaptureSessionId((n) => n + 1);
             }}
             className="btn btn-secondary"
@@ -156,8 +174,127 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
     );
   }
 
+  // ── Main check-out form ─────────────────────────────────────────────────
   return (
-    <div className="fade-up card" style={{ maxWidth: 460, margin: "10px auto", padding: "28px 26px", boxShadow: "var(--shadow-sm)" }}>
+    <div
+      className="fade-up card"
+      style={{ maxWidth: 460, margin: "10px auto", padding: "28px 26px", boxShadow: "var(--shadow-sm)", position: "relative", overflow: "hidden" }}
+    >
+      {/* ── Vehicle Not Found Alert Modal ── */}
+      {notFoundAlert && (
+        <div
+          className="animate-fade-in"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(255, 255, 255, 0.4)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+          }}
+        >
+          <div
+            className="card animate-scale-up"
+            style={{
+              width: "90%",
+              maxWidth: 360,
+              padding: "30px 24px",
+              textAlign: "center",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+              border: "1.5px solid var(--danger)",
+              background: "var(--surface)",
+            }}
+          >
+            {/* Icon */}
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                background: "var(--danger-soft, #fef2f2)",
+                color: "var(--danger)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px",
+                fontSize: 26,
+              }}
+            >
+              🔍
+            </div>
+
+            <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "var(--danger)" }}>Vehicle Not Found</h3>
+            <p style={{ fontSize: 13, color: "var(--muted)", margin: "6px 0 16px" }}>
+              No parked vehicle found with that number. Check the plate or search it up in Admin.
+            </p>
+
+            {/* Scanned plate */}
+            <div
+              className="mono"
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                letterSpacing: "0.03em",
+                background: "var(--danger-soft, #fef2f2)",
+                padding: "12px 16px",
+                borderRadius: 8,
+                color: "var(--danger)",
+                border: "1px solid var(--danger)",
+                marginBottom: 16,
+              }}
+            >
+              {notFoundAlert.number}
+            </div>
+
+            {/* Countdown */}
+            <div style={{ fontSize: 11.5, color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <span
+                className="spin"
+                style={{
+                  width: 12,
+                  height: 12,
+                  border: "2px solid var(--border)",
+                  borderTopColor: "var(--danger)",
+                  borderRadius: "50%",
+                  display: "inline-block",
+                }}
+              />
+              <span>
+                Resuming scanner in{" "}
+                <span
+                  key={notFoundCountdown}
+                  className="animate-scale-up"
+                  style={{ display: "inline-block", fontWeight: 700, color: "var(--danger)", minWidth: "16px", textAlign: "center" }}
+                >
+                  {notFoundCountdown}
+                </span>
+                s...
+              </span>
+            </div>
+
+            {/* Manual dismiss */}
+            <button
+              type="button"
+              onClick={() => {
+                if (notFoundIntervalRef.current) {
+                  clearInterval(notFoundIntervalRef.current);
+                  notFoundIntervalRef.current = null;
+                }
+                setNotFoundAlert(null);
+                resetScanner();
+              }}
+              className="btn btn-secondary"
+              style={{ width: "100%", marginTop: 16, padding: "7px 12px", fontSize: 13 }}
+            >
+              Dismiss & Scan Again
+            </button>
+          </div>
+        </div>
+      )}
+
       <h2 className="display" style={{ fontSize: 18, fontWeight: 600 }}>
         Check-Out
       </h2>
@@ -194,8 +331,6 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         </div>
       </div>
 
-      {notFoundMsg && <div style={{ color: "var(--danger)", fontSize: 13, fontWeight: 500, marginTop: 14 }}>{notFoundMsg}</div>}
-
       {matched && (
         <div className="fade-up" style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 18 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
@@ -213,7 +348,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, marginTop: 8 }}>
             <span style={{ color: "var(--muted)" }}>Rate ({matched.type})</span>
             <span style={{ fontWeight: 600 }}>
-              {fmtMoney(store.settings.rates[matched.type].hourly)}/hr · billed {matched.hoursBilled} hr
+              {fmtMoney((store.settings.rates[matched.type] || store.settings.rates.standard).hourly)}/hr · billed {matched.hoursBilled} hr
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>

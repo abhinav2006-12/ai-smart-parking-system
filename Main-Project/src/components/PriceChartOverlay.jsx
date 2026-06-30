@@ -12,14 +12,14 @@ import {
 
 // Mock dummy data for dynamic parking rates (price per hour in ₹)
 const DEFAULT_PRICING_DATA = [
-  { time: "08:00", Standard: 30, EV: 15, Disabled: 10 },
-  { time: "10:00", Standard: 60, EV: 30, Disabled: 15 },
-  { time: "12:00", Standard: 80, EV: 40, Disabled: 15 },
-  { time: "14:00", Standard: 70, EV: 35, Disabled: 10 },
-  { time: "16:00", Standard: 50, EV: 25, Disabled: 10 },
-  { time: "18:00", Standard: 90, EV: 45, Disabled: 20 },
-  { time: "20:00", Standard: 80, EV: 40, Disabled: 15 },
-  { time: "22:00", Standard: 40, EV: 20, Disabled: 10 },
+  { time: "08:00", Standard: 30, EV: 15, Taxi: 10 },
+  { time: "10:00", Standard: 60, EV: 30, Taxi: 15 },
+  { time: "12:00", Standard: 80, EV: 40, Taxi: 15 },
+  { time: "14:00", Standard: 70, EV: 35, Taxi: 10 },
+  { time: "16:00", Standard: 50, EV: 25, Taxi: 10 },
+  { time: "18:00", Standard: 90, EV: 45, Taxi: 20 },
+  { time: "20:00", Standard: 80, EV: 40, Taxi: 15 },
+  { time: "22:00", Standard: 40, EV: 20, Taxi: 10 },
 ];
 
 export default function PriceChartOverlay({ isOpen, onClose, data = DEFAULT_PRICING_DATA }) {
@@ -85,7 +85,7 @@ export default function PriceChartOverlay({ isOpen, onClose, data = DEFAULT_PRIC
 
 export function PriceChartCard({ data = DEFAULT_PRICING_DATA, onClose, inline = false }) {
   const [isDark, setIsDark] = useState(false);
-  const [activeTab, setActiveTab] = useState("all"); // all | standard | ev | disabled
+  const [activeTab, setActiveTab] = useState("all"); // all | standard | ev | taxi
 
   // Detect theme updates
   useEffect(() => {
@@ -116,9 +116,9 @@ export function PriceChartCard({ data = DEFAULT_PRICING_DATA, onClose, inline = 
       stroke: isDark ? "#10B981" : "#059669",
       fill: "url(#colorEV)",
     },
-    Disabled: {
+    Taxi: {
       stroke: isDark ? "#F59E0B" : "#D97706",
-      fill: "url(#colorDisabled)",
+      fill: "url(#colorTaxi)",
     },
   };
 
@@ -257,7 +257,7 @@ export function PriceChartCard({ data = DEFAULT_PRICING_DATA, onClose, inline = 
             { key: "all", label: "All Vehicles" },
             { key: "standard", label: "Standard" },
             { key: "ev", label: "EV (Save 50%)" },
-            { key: "disabled", label: "Disabled" },
+            { key: "taxi", label: "Taxi" },
           ].map((tab) => {
             const active = activeTab === tab.key;
             return (
@@ -308,9 +308,9 @@ export function PriceChartCard({ data = DEFAULT_PRICING_DATA, onClose, inline = 
                   <stop offset="5%" stopColor={colors.EV.stroke} stopOpacity={0.3} />
                   <stop offset="95%" stopColor={colors.EV.stroke} stopOpacity={0.0} />
                 </linearGradient>
-                <linearGradient id="colorDisabled" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={colors.Disabled.stroke} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={colors.Disabled.stroke} stopOpacity={0.0} />
+                <linearGradient id="colorTaxi" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={colors.Taxi.stroke} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={colors.Taxi.stroke} stopOpacity={0.0} />
                 </linearGradient>
               </defs>
 
@@ -375,15 +375,15 @@ export function PriceChartCard({ data = DEFAULT_PRICING_DATA, onClose, inline = 
                 />
               )}
 
-              {(activeTab === "all" || activeTab === "disabled") && (
+              {(activeTab === "all" || activeTab === "taxi") && (
                 <Area
                   type="monotone"
-                  dataKey="Disabled"
-                  name="Disabled"
-                  stroke={colors.Disabled.stroke}
+                  dataKey="Taxi"
+                  name="Taxi"
+                  stroke={colors.Taxi.stroke}
                   strokeWidth={2}
                   fillOpacity={1}
-                  fill={colors.Disabled.fill}
+                  fill={colors.Taxi.fill}
                   activeDot={{ r: 5 }}
                 />
               )}
@@ -411,8 +411,8 @@ export function PriceChartCard({ data = DEFAULT_PRICING_DATA, onClose, inline = 
             <div style={{ fontSize: "14px", fontWeight: "700", color: colors.EV.stroke, marginTop: "2px" }}>₹40/hr</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <span style={{ fontSize: "10px", color: "var(--muted)", fontWeight: "600", textTransform: "uppercase" }}>Disabled/Special</span>
-            <div style={{ fontSize: "14px", fontWeight: "700", color: colors.Disabled.stroke, marginTop: "2px" }}>₹20/hr</div>
+            <span style={{ fontSize: "10px", color: "var(--muted)", fontWeight: "600", textTransform: "uppercase" }}>Taxi / Special</span>
+            <div style={{ fontSize: "14px", fontWeight: "700", color: colors.Taxi.stroke, marginTop: "2px" }}>₹20/hr</div>
           </div>
         </div>
     </div>
