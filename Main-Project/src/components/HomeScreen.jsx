@@ -78,6 +78,7 @@ export default function HomeScreen({ onGuest, theme, onToggleTheme }) {
           justifyContent: "space-between",
           borderBottom: "1px solid var(--border)",
           background: "var(--surface)",
+          transition: "background-color 0.3s ease, border-bottom-color 0.3s ease, color 0.3s ease",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -324,7 +325,7 @@ export default function HomeScreen({ onGuest, theme, onToggleTheme }) {
                 lineHeight: 1.65,
               }}
             >
-              Streamline parking check-ins, automate plate recognition logs, and verify exits seamlessly with integrated billing tools.
+              Welcome to ParkPilot! Easily check in your vehicle, secure your designated parking slot, and complete hassle-free digital checkouts at our gate counter.
             </p>
 
             <button

@@ -27,7 +27,7 @@ export function isSameDay(ts, refDate) {
 }
 
 export function durationMinutes(start, end) {
-  return Math.max(1, Math.round((end - start) / 60000));
+  return Math.max(1, Math.ceil((end - start) / 60000));
 }
 
 export function formatDuration(mins) {

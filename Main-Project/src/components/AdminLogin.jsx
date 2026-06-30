@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "../hooks/useTheme";
 
-export default function AdminLogin({ onSuccess, onBack }) {
+export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBlocked, onSessionBlockedCheck, onSessionReset }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -42,17 +42,26 @@ export default function AdminLogin({ onSuccess, onBack }) {
     setErr("");
 
     // Simulate authenticating for a high-end feel
-    setTimeout(() => {
+    setTimeout(async () => {
       if (email.toLowerCase().trim() === "parkpilot@gmail.com" && password === "parkpilot2025") {
-        setSuccess(true);
+        // Check/claim cross-device session before granting access
+        if (onSessionBlockedCheck) {
+          const result = await onSessionBlockedCheck();
+          if (!result) {
+            setLoading(false);
+            return; // sessionBlocked state already set in App.jsx
+          }
+          setSuccess(true);
+          setTimeout(() => onSuccess(result.token), 800);
+        } else {
+          setSuccess(true);
+          setTimeout(() => onSuccess(null), 800);
+        }
         setAttempts(0);
-        setTimeout(() => {
-          onSuccess();
-        }, 800);
       } else {
         const nextAttempts = attempts + 1;
         if (nextAttempts >= 5) {
-          setLockoutSecs(30); // 30 second lockout
+          setLockoutSecs(30);
           setAttempts(0);
           setErr("Too many failed login attempts. Locked out for 30 seconds.");
         } else {
@@ -79,6 +88,149 @@ export default function AdminLogin({ onSuccess, onBack }) {
       <div style={{ position: "absolute", top: 24, right: 24 }}>
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </div>
+
+      {/* Full-screen Glassmorphic Session Kicked Overlay */}
+      {sessionKicked && (
+        <div
+          className="fade-up"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: theme === "dark" ? "rgba(10, 12, 16, 0.65)" : "rgba(255, 255, 255, 0.45)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            padding: 24,
+          }}
+        >
+          <div
+            className="card animate-scale-up"
+            style={{
+              width: "100%",
+              maxWidth: 400,
+              padding: "36px 30px",
+              textAlign: "center",
+              background: theme === "dark" ? "rgba(23, 27, 33, 0.85)" : "rgba(255, 255, 255, 0.85)",
+              border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.08)",
+              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.15)",
+              borderRadius: 20,
+            }}
+          >
+            {/* Visual Indicator (Exclamation Badge) */}
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                background: "rgba(124, 58, 237, 0.15)",
+                color: "#7C3AED",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 20px",
+                border: "1px solid rgba(124, 58, 237, 0.3)",
+              }}
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </div>
+
+            <h3 className="display" style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>
+              Another User Logged In
+            </h3>
+            <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 8, marginBottom: 24, lineHeight: "1.5" }}>
+              Your administrator session was disconnected because another device has claimed the login.
+            </p>
+
+            <button
+              type="button"
+              onClick={onBack}
+              className="btn btn-primary"
+              style={{
+                width: "100%",
+                height: 44,
+                borderRadius: 10,
+                background: "var(--accent)",
+                color: "#fff",
+                fontWeight: 600,
+                fontSize: 14,
+                transition: "all 0.2s ease",
+              }}
+            >
+              Return to Home
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Session Blocked Banner (cross-device) */}
+      {sessionBlocked && (
+        <div
+          className="fade-up"
+          style={{
+            position: "absolute",
+            top: 18,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(220, 38, 38, 0.12)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(220, 38, 38, 0.3)",
+            color: "#DC2626",
+            fontSize: 12.5,
+            fontWeight: 600,
+            padding: "9px 18px",
+            borderRadius: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            boxShadow: "0 8px 32px rgba(220, 38, 38, 0.12)",
+            whiteSpace: "nowrap",
+            zIndex: 99,
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+          </svg>
+          <span>Admin session active on another device. Ask them to log out first.</span>
+          {onSessionReset && (
+            <button
+              type="button"
+              onClick={onSessionReset}
+              style={{
+                background: "rgba(220, 38, 38, 0.15)",
+                border: "1px solid rgba(220, 38, 38, 0.3)",
+                borderRadius: "6px",
+                color: "#DC2626",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: 700,
+                padding: "4px 10px",
+                marginLeft: "8px",
+                textTransform: "uppercase",
+                transition: "all 0.15s ease",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = "#DC2626";
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = "rgba(220, 38, 38, 0.15)";
+                e.currentTarget.style.color = "#DC2626";
+              }}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      )}
 
       <form
         onSubmit={handleSubmit}
@@ -303,10 +455,12 @@ export default function AdminLogin({ onSuccess, onBack }) {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "var(--danger-soft)",
+              background: "rgba(220, 38, 38, 0.08)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
               padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid rgba(var(--danger-rgb), 0.15)",
+              borderRadius: 10,
+              border: "1px solid rgba(220, 38, 38, 0.2)",
             }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -59,12 +59,18 @@ export async function loadStoreFromSupabase() {
       }
     : null;
 
+  const parseTime = (val) => {
+    if (!val) return null;
+    const num = Number(val);
+    return isNaN(num) ? new Date(val).getTime() : num;
+  };
+
   const vehicles = (vehiclesData || []).map((v) => ({
     id: v.id,
     number: v.number,
     type: v.type,
-    entryTime: Number(v.entry_time),
-    exitTime: v.exit_time ? Number(v.exit_time) : null,
+    entryTime: parseTime(v.entry_time),
+    exitTime: parseTime(v.exit_time),
     status: v.status,
     fee: v.fee ? Number(v.fee) : null,
     durationMins: v.duration_mins,
@@ -76,7 +82,7 @@ export async function loadStoreFromSupabase() {
     id: r.id,
     vehicleId: r.vehicle_id,
     amount: Number(r.amount),
-    date: Number(r.date),
+    date: parseTime(r.date),
   }));
 
   if (!settings) {
@@ -101,15 +107,17 @@ export async function syncStoreToSupabase(newStore, oldStore) {
 
   // 1. Sync Settings (if changed)
   if (JSON.stringify(newStore.settings) !== JSON.stringify(oldStore.settings)) {
-    const { error } = await supabase.from("settings").upsert({
-      id: 1,
-      total_slots: newStore.settings.totalSlots,
-      slots_by_type: newStore.settings.slotsByType,
-      rates: newStore.settings.rates,
-      upi_vpa: newStore.settings.upiVpa,
-      upi_payee_name: newStore.settings.upiPayeeName,
-      currency: newStore.settings.currency,
-    });
+    const { error } = await supabase
+      .from("settings")
+      .update({
+        total_slots: newStore.settings.totalSlots,
+        slots_by_type: newStore.settings.slotsByType,
+        rates: newStore.settings.rates,
+        upi_vpa: newStore.settings.upiVpa,
+        upi_payee_name: newStore.settings.upiPayeeName,
+        currency: newStore.settings.currency,
+      })
+      .eq("id", 1);
     if (error) throw error;
   }
 
@@ -145,7 +153,7 @@ export async function syncStoreToSupabase(newStore, oldStore) {
   const vehiclesToDelete = oldStore.vehicles.filter((v) => !newVehiclesSet.has(v.id)).map((v) => v.id);
   if (vehiclesToDelete.length > 0) {
     const { error } = await supabase.from("vehicles").delete().in("id", vehiclesToDelete);
-    if (error) throw error;
+    if (error) console.error("[syncStore] vehicles delete error:", error);
   }
 
   // 3. Sync Revenue Log
@@ -174,6 +182,150 @@ export async function syncStoreToSupabase(newStore, oldStore) {
   const revenueToDelete = oldStore.revenueLog.filter((r) => !newRevenueSet.has(r.id)).map((r) => r.id);
   if (revenueToDelete.length > 0) {
     const { error } = await supabase.from("revenue_log").delete().in("id", revenueToDelete);
-    if (error) throw error;
+    if (error) console.error("[syncStore] revenue delete error:", error);
   }
+}
+
+/**
+ * Wipes ALL vehicles and revenue_log rows from Supabase.
+ * Uses a broad column filter that matches every real row, bypassing RLS id-list restrictions.
+ */
+export async function wipeAllData() {
+  if (!supabaseUrl || !supabaseAnonKey) return;
+
+  // Delete revenue_log first (foreign-key safe order)
+  const { error: revErr } = await supabase
+    .from("revenue_log")
+    .delete()
+    .gte("amount", 0); // matches every row (amount is always >= 0)
+
+  if (revErr) {
+    console.error("[wipeAllData] revenue_log error:", revErr);
+    throw revErr;
+  }
+
+  // Delete all vehicles
+  const { error: vehErr } = await supabase
+    .from("vehicles")
+    .delete()
+    .in("status", ["parked", "completed", "cancelled", "pending"]); // covers every possible status
+
+  if (vehErr) {
+    console.error("[wipeAllData] vehicles error:", vehErr);
+    throw vehErr;
+  }
+}
+
+// ─── Admin Session Management (cross-device single-session lock) ───────────
+
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Generates a random session token string.
+ */
+function genToken() {
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
+
+/**
+ * Tries to claim the admin session in Supabase.
+ * Returns { ok: true, token } if the seat was free (or expired),
+ * Returns { ok: false, since } if another active session is running.
+ */
+export async function claimAdminSession(existingToken) {
+  // Read current session state
+  const { data, error } = await supabase
+    .from("settings")
+    .select("session_token, session_at")
+    .eq("id", 1)
+    .single();
+
+  if (error) {
+    console.error("[session] read error:", error);
+    // Allow login if we can't read — fail open
+    return { ok: true, token: null };
+  }
+
+  const now = Date.now();
+  const isActive =
+    data.session_token &&
+    data.session_at &&
+    now - Number(data.session_at) < SESSION_TTL_MS;
+
+  // If the active session belongs to the token we already have, it's valid
+  if (isActive && existingToken && data.session_token === existingToken) {
+    return { ok: true, token: existingToken };
+  }
+
+  if (isActive) {
+    return { ok: false, since: Number(data.session_at) };
+  }
+
+  // Seat is free — write our token
+  const token = existingToken || genToken();
+  const { error: writeErr } = await supabase
+    .from("settings")
+    .update({ session_token: token, session_at: now })
+    .eq("id", 1);
+
+  if (writeErr) {
+    console.error("[session] claim error:", writeErr);
+    return { ok: true, token: null }; // fail open
+  }
+
+  return { ok: true, token };
+}
+
+/**
+ * Refreshes session heartbeat so it doesn't expire while the admin is active.
+ * Should be called every ~5 minutes. Pass the token from claimAdminSession.
+ */
+export async function refreshAdminSession(token) {
+  if (!token) return;
+  await supabase
+    .from("settings")
+    .update({ session_at: Date.now() })
+    .eq("id", 1)
+    .eq("session_token", token); // only refresh if WE own the token
+}
+
+/**
+ * Clears the admin session token so other devices can log in.
+ */
+export async function releaseAdminSession(token) {
+  if (!token) return;
+  await supabase
+    .from("settings")
+    .update({ session_token: null, session_at: null })
+    .eq("id", 1)
+    .eq("session_token", token); // only clear if WE own the token
+}
+
+/**
+ * Checks if the admin session is currently occupied by any active device.
+ */
+export async function isSessionOccupied() {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("session_token, session_at")
+    .eq("id", 1)
+    .single();
+
+  if (error || !data) return false;
+  const now = Date.now();
+  return !!(
+    data.session_token &&
+    data.session_at &&
+    now - Number(data.session_at) < SESSION_TTL_MS
+  );
+}
+
+/**
+ * Forcefully clears the admin session, ignoring who owns it.
+ */
+export async function forceResetAdminSession() {
+  await supabase
+    .from("settings")
+    .update({ session_token: null, session_at: null })
+    .eq("id", 1);
 }

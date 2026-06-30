@@ -20,7 +20,7 @@ export default function GuestPanel({ store, updateStore, onBack }) {
 
 function GuestHeader({ onBack, backLabel }) {
   return (
-    <div style={{ borderBottom: "1px solid var(--border)" }}>
+    <div style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)", transition: "background-color 0.3s ease, border-bottom-color 0.3s ease, color 0.3s ease" }}>
       <div style={{ padding: "18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <button onClick={onBack} className="btn btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, padding: "6px 10px" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
