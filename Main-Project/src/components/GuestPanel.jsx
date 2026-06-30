@@ -46,25 +46,7 @@ function GuestHeader({ onBack, backLabel, theme, onToggleTheme }) {
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 7,
-                background: "linear-gradient(135deg, var(--accent), var(--accent-hover))",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 700,
-                color: "#fff",
-                fontSize: 13,
-              }}
-            >
-              P
-            </div>
-            <span className="display" style={{ fontSize: 16, fontWeight: 600 }}>
-              ParkPilot
-            </span>
+            <img src="/parkpilot_transparent.png" alt="ParkPilot Logo" style={{ height: 28, objectFit: "contain" }} />
           </div>
 
           <div style={{ width: 1, height: 16, background: "var(--border)" }} />

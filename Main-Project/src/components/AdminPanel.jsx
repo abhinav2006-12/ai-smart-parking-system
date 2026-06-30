@@ -23,22 +23,7 @@ export default function AdminPanel({ store, updateStore, onLogout, theme, onTogg
       <aside className="admin-sidebar">
         {/* Sidebar Header: Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              background: "linear-gradient(135deg, var(--accent), var(--accent-hover))",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 700,
-              color: "#fff",
-              fontSize: 13,
-            }}
-          >
-            P
-          </div>
+          <img src="/parkpilot_transparent.png" alt="ParkPilot Logo" style={{ width: 28, height: 28, borderRadius: 7, objectFit: "contain" }} />
           <span className="display admin-sidebar-logo-text" style={{ fontWeight: 600 }}>
             ParkPilot Admin
           </span>
