@@ -107,9 +107,12 @@ export function useStore() {
         (payload) => {
           const newVehicle = mapVehicleRow(payload.new);
           setStore((prev) => {
-            // Skip if we already have it (our own write echoed back)
             if (prev.vehicles.some((v) => v.id === newVehicle.id)) return prev;
-            return { ...prev, vehicles: [newVehicle, ...prev.vehicles] };
+            const nextVehicles = [newVehicle, ...prev.vehicles];
+            if (lastSavedStoreRef.current) {
+              lastSavedStoreRef.current.vehicles = JSON.parse(JSON.stringify(nextVehicles));
+            }
+            return { ...prev, vehicles: nextVehicles };
           });
         }
       )
@@ -118,12 +121,15 @@ export function useStore() {
         { event: "UPDATE", schema: "public", table: "vehicles" },
         (payload) => {
           const updated = mapVehicleRow(payload.new);
-          setStore((prev) => ({
-            ...prev,
-            vehicles: prev.vehicles.map((v) =>
+          setStore((prev) => {
+            const nextVehicles = prev.vehicles.map((v) =>
               v.id === updated.id ? updated : v
-            ),
-          }));
+            );
+            if (lastSavedStoreRef.current) {
+              lastSavedStoreRef.current.vehicles = JSON.parse(JSON.stringify(nextVehicles));
+            }
+            return { ...prev, vehicles: nextVehicles };
+          });
         }
       )
       .on(
@@ -132,10 +138,13 @@ export function useStore() {
         (payload) => {
           const deletedId = payload.old?.id;
           if (!deletedId) return;
-          setStore((prev) => ({
-            ...prev,
-            vehicles: prev.vehicles.filter((v) => v.id !== deletedId),
-          }));
+          setStore((prev) => {
+            const nextVehicles = prev.vehicles.filter((v) => v.id !== deletedId);
+            if (lastSavedStoreRef.current) {
+              lastSavedStoreRef.current.vehicles = JSON.parse(JSON.stringify(nextVehicles));
+            }
+            return { ...prev, vehicles: nextVehicles };
+          });
         }
       )
       // ── revenue_log ───────────────────────────────────────────────────────
@@ -146,7 +155,11 @@ export function useStore() {
           const newEntry = mapRevenueRow(payload.new);
           setStore((prev) => {
             if (prev.revenueLog.some((r) => r.id === newEntry.id)) return prev;
-            return { ...prev, revenueLog: [...prev.revenueLog, newEntry] };
+            const nextRevenue = [...prev.revenueLog, newEntry];
+            if (lastSavedStoreRef.current) {
+              lastSavedStoreRef.current.revenueLog = JSON.parse(JSON.stringify(nextRevenue));
+            }
+            return { ...prev, revenueLog: nextRevenue };
           });
         }
       )
@@ -156,10 +169,37 @@ export function useStore() {
         (payload) => {
           const deletedId = payload.old?.id;
           if (!deletedId) return;
-          setStore((prev) => ({
-            ...prev,
-            revenueLog: prev.revenueLog.filter((r) => r.id !== deletedId),
-          }));
+          setStore((prev) => {
+            const nextRevenue = prev.revenueLog.filter((r) => r.id !== deletedId);
+            if (lastSavedStoreRef.current) {
+              lastSavedStoreRef.current.revenueLog = JSON.parse(JSON.stringify(nextRevenue));
+            }
+            return { ...prev, revenueLog: nextRevenue };
+          });
+        }
+      )
+      // ── settings ──────────────────────────────────────────────────────────
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "settings" },
+        (payload) => {
+          if (payload.new && payload.new.id === 1) {
+            const newSettings = {
+              totalSlots: payload.new.total_slots,
+              slotsByType: payload.new.slots_by_type,
+              rates: payload.new.rates,
+              upiVpa: payload.new.upi_vpa,
+              upiPayeeName: payload.new.upi_payee_name,
+              currency: payload.new.currency,
+            };
+            setStore((prev) => {
+              if (JSON.stringify(prev.settings) === JSON.stringify(newSettings)) return prev;
+              if (lastSavedStoreRef.current) {
+                lastSavedStoreRef.current.settings = JSON.parse(JSON.stringify(newSettings));
+              }
+              return { ...prev, settings: newSettings };
+            });
+          }
         }
       )
       .subscribe((status) => {

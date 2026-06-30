@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { wipeAllData } from "../lib/supabase";
 
 const TYPES = ["standard", "ev", "taxi"];
@@ -7,6 +7,10 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
   const [local, setLocal] = useState(() => JSON.parse(JSON.stringify(store.settings)));
   const [saved, setSaved] = useState(false);
   const [wiping, setWiping] = useState(false);
+
+  useEffect(() => {
+    setLocal(JSON.parse(JSON.stringify(store.settings)));
+  }, [store.settings]);
 
   const setSlot = (type, val) =>
     setLocal((prev) => ({ ...prev, slotsByType: { ...prev.slotsByType, [type]: Math.max(0, Number(val) || 0) } }));
