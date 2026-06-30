@@ -141,6 +141,8 @@ export default function App() {
   } else if (isAdminRoute) {
     content = !adminAuthed ? (
       <AdminLogin
+        theme={theme}
+        onToggleTheme={toggleTheme}
         onSuccess={handleAdminLogin}
         onBack={() => navigate("/")}
         sessionKicked={sessionKicked}
@@ -166,13 +168,21 @@ export default function App() {
           store={store}
           updateStore={updateStore}
           onLogout={handleAdminLogout}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
       </Suspense>
     );
   } else if (guestOpen) {
     content = (
       <Suspense fallback={<LoadingScreen />}>
-        <GuestPanel store={store} updateStore={updateStore} onBack={() => setGuestOpen(false)} />
+        <GuestPanel
+          store={store}
+          updateStore={updateStore}
+          onBack={() => setGuestOpen(false)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
       </Suspense>
     );
   } else {

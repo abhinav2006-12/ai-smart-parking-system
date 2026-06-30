@@ -1,15 +1,22 @@
 import { useState, useEffect } from "react";
 import ThemeToggle from "./ThemeToggle";
-import { useTheme } from "../hooks/useTheme";
 
-export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBlocked, onSessionBlockedCheck, onSessionReset }) {
+export default function AdminLogin({
+  theme,
+  onToggleTheme: toggleTheme,
+  onSuccess,
+  onBack,
+  sessionKicked,
+  sessionBlocked,
+  onSessionBlockedCheck,
+  onSessionReset,
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [theme, toggleTheme] = useTheme();
 
   const [emailFocused, setEmailFocused] = useState(false);
   const [passFocused, setPassFocused] = useState(false);
@@ -74,20 +81,69 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBl
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        position: "relative",
-      }}
-    >
-      {/* Theme toggle position absolute top right */}
-      <div style={{ position: "absolute", top: 24, right: 24 }}>
-        <ThemeToggle theme={theme} onToggle={toggleTheme} />
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* Header bar */}
+      <div
+        style={{
+          padding: "20px 32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--surface)",
+          transition: "background-color 0.3s ease, border-bottom-color 0.3s ease, color 0.3s ease",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {/* Logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 7,
+                background: "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+                color: "#fff",
+                fontSize: 13,
+              }}
+            >
+              P
+            </div>
+            <span className="display" style={{ fontSize: 16, fontWeight: 600 }}>
+              ParkPilot
+            </span>
+          </div>
+
+          <div style={{ width: 1, height: 16, background: "var(--border)" }} />
+
+          <button onClick={onBack} disabled={loading} className="btn btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, padding: "6px 10px" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Back
+          </button>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{ color: "var(--muted)", fontSize: 12.5 }}>Admin Console</span>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
       </div>
+
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+          position: "relative",
+        }}
+      >
 
       {/* Full-screen Glassmorphic Session Kicked Overlay */}
       {sessionKicked && (
@@ -544,6 +600,22 @@ export default function AdminLogin({ onSuccess, onBack, sessionKicked, sessionBl
           </button>
         </div>
       </form>
+      </div>
+
+      {/* Footer */}
+      <footer
+        style={{
+          textAlign: "center",
+          padding: "16px",
+          color: "var(--muted)",
+          fontSize: 12,
+          borderTop: "1px solid var(--border)",
+          background: "var(--surface)",
+          transition: "background-color 0.3s ease, border-top-color 0.3s ease, color 0.3s ease",
+        }}
+      >
+        ParkPilot Control Gateway &copy; {new Date().getFullYear()} &bull; Secure Administrator Access Only
+      </footer>
     </div>
   );
 }
