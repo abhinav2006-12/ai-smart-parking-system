@@ -16,8 +16,22 @@ import { fmtMoney, isSameDay } from "../lib/format";
 
 const ACCENT = "#2F4858";
 
-export default function DashboardTab({ store }) {
+export default function DashboardTab({ store, onRefresh }) {
   const [selectedSlotType, setSelectedSlotType] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      if (onRefresh) await onRefresh();
+    } finally {
+      setRefreshing(false);
+      setLastRefreshed(new Date());
+    }
+  };
+
   const now = new Date();
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
@@ -66,7 +80,7 @@ export default function DashboardTab({ store }) {
   }, [store.revenueLog]);
 
   const slotTypeData = useMemo(() => {
-    const occupied = { standard: 0, ev: 0, disabled: 0 };
+    const occupied = { standard: 0, ev: 0, taxi: 0 };
     store.vehicles.filter((v) => v.status === "parked").forEach((v) => {
       occupied[v.type] = (occupied[v.type] || 0) + 1;
     });
@@ -74,7 +88,7 @@ export default function DashboardTab({ store }) {
     return [
       { name: "Standard", value: Math.max(0, (store.settings.slotsByType.standard || 0) - (occupied.standard || 0)), color: "#E53935" },
       { name: "EV", value: Math.max(0, (store.settings.slotsByType.ev || 0) - (occupied.ev || 0)), color: "#1E88E5" },
-      { name: "Disabled", value: Math.max(0, (store.settings.slotsByType.disabled || 0) - (occupied.disabled || 0)), color: "#43A047" },
+      { name: "Taxi", value: Math.max(0, (store.settings.slotsByType.taxi || 0) - (occupied.taxi || 0)), color: "#43A047" },
     ];
   }, [store.settings.slotsByType, store.vehicles]);
 
@@ -94,6 +108,45 @@ export default function DashboardTab({ store }) {
 
   return (
     <div className="fade-up" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Header row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <h2 className="display" style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Dashboard</h2>
+          {lastRefreshed && (
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>
+              Last refreshed: {lastRefreshed.toLocaleTimeString()}
+            </div>
+          )}
+        </div>
+        <button
+          id="dashboard-refresh-btn"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="btn btn-secondary"
+          title="Refresh dashboard data from database"
+          style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", fontSize: 13, fontWeight: 600, minWidth: 110 }}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            style={{
+              transition: "transform 0.4s ease",
+              transform: refreshing ? "rotate(360deg)" : "rotate(0deg)",
+              animation: refreshing ? "spin 0.7s linear infinite" : "none",
+            }}
+          >
+            <path d="M23 4v6h-6" />
+            <path d="M1 20v-6h6" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+
       {/* Top Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
         {topStats.map((s, i) => (

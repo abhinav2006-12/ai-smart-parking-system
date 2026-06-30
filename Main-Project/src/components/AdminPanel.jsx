@@ -10,7 +10,7 @@ const TABS = [
   { key: "settings", label: "Settings" },
 ];
 
-export default function AdminPanel({ store, updateStore, onLogout, theme, onToggleTheme: toggleTheme }) {
+export default function AdminPanel({ store, updateStore, onLogout, theme, onToggleTheme: toggleTheme, onRefresh }) {
   const [tab, setTab] = useState("dashboard");
 
   const changeTab = (nextTab) => {
@@ -89,8 +89,8 @@ export default function AdminPanel({ store, updateStore, onLogout, theme, onTogg
             width: "100%",
           }}
         >
-          {tab === "dashboard" && <DashboardTab store={store} />}
-          {tab === "vehicles" && <VehicleListingTab store={store} />}
+          {tab === "dashboard" && <DashboardTab store={store} onRefresh={onRefresh} />}
+          {tab === "vehicles" && <VehicleListingTab store={store} onRefresh={onRefresh} />}
           {tab === "settings" && (
             <SettingsTab store={store} updateStore={updateStore} onLogout={onLogout} />
           )}

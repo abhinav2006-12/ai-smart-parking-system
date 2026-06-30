@@ -2,10 +2,12 @@ import { Suspense, lazy, useState, useEffect, useCallback, useRef } from "react"
 import { useStore } from "./hooks/useStore";
 import { useRoute } from "./hooks/useRoute";
 import { useTheme } from "./hooks/useTheme";
+import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import HomeScreen from "./components/HomeScreen";
 import AdminLogin from "./components/AdminLogin";
 import AmbientBackground from "./components/AmbientBackground";
 import VehicleLoader from "./components/VehicleLoader";
+import OfflinePage from "./components/OfflinePage";
 import {
   claimAdminSession,
   refreshAdminSession,
@@ -27,10 +29,11 @@ const HEARTBEAT_INTERVAL = 5 * 60 * 1000;
 const VERIFY_INTERVAL = 2 * 1000;
 
 export default function App() {
-  const [store, updateStore, loading] = useStore();
+  const [store, updateStore, loading, refreshStore] = useStore();
   const [path, navigate] = useRoute();
   const isAdminRoute = path.replace(/\/+$/, "") === ADMIN_PATH || path === ADMIN_PATH;
   const [theme, toggleTheme] = useTheme();
+  const isOnline = useOnlineStatus();
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [sessionKicked, setSessionKicked] = useState(false);
   const [sessionBlocked, setSessionBlocked] = useState(false); // Another device is active
@@ -136,6 +139,18 @@ export default function App() {
 
   let content;
 
+  // Show offline page immediately if no network
+  if (!isOnline) {
+    return (
+      <>
+        <AmbientBackground />
+        <div className="app-content">
+          <OfflinePage onRetry={() => window.location.reload()} />
+        </div>
+      </>
+    );
+  }
+
   if (loading) {
     content = <LoadingScreen />;
   } else if (isAdminRoute) {
@@ -170,6 +185,7 @@ export default function App() {
           onLogout={handleAdminLogout}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onRefresh={refreshStore}
         />
       </Suspense>
     );
