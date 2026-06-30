@@ -239,7 +239,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 className="btn btn-secondary"
                 style={{ width: "100%", marginTop: 16, padding: "7px 12px", fontSize: 13 }}
               >
-                Dismiss &amp; Scan Again
+                Dismiss & Scan Again
               </button>
             </div>
           </div>

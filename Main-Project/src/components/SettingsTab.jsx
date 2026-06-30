@@ -98,11 +98,11 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
                 <div style={{ fontWeight: 700, fontSize: 14, textTransform: "capitalize", paddingBottom: 11 }}>{type}</div>
                 <div>
                   <label>Rate (₹/hr)</label>
-                  <input type="number" min="0" value={local.rates[type].hourly} onChange={(e) => setRate(type, "hourly", e.target.value)} />
+                  <input type="number" min="0" value={(local.rates[type] || { hourly: 0 }).hourly} onChange={(e) => setRate(type, "hourly", e.target.value)} />
                 </div>
                 <div>
                   <label>Min. billable hours</label>
-                  <input type="number" min="1" value={local.rates[type].minHours} onChange={(e) => setRate(type, "minHours", e.target.value)} />
+                  <input type="number" min="1" value={(local.rates[type] || { minHours: 1 }).minHours} onChange={(e) => setRate(type, "minHours", e.target.value)} />
                 </div>
               </div>
             ))}
