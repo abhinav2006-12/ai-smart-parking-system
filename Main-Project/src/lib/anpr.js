@@ -22,5 +22,5 @@ export async function recognizePlate(imageBlob, { signal } = {}) {
   }
 
   const data = await res.json();
-  return { plate: data.plate || "", confidence: data.confidence || 0 };
+  return { plate: data.plate || "", confidence: data.confidence || 0, raw: data.raw || null };
 }
