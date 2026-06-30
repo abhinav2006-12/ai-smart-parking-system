@@ -411,8 +411,8 @@ export function PriceChartCard({ data = DEFAULT_PRICING_DATA, onClose, inline = 
             <div style={{ fontSize: "14px", fontWeight: "700", color: colors.EV.stroke, marginTop: "2px" }}>₹40/hr</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <span style={{ fontSize: "10px", color: "var(--muted)", fontWeight: "600", textTransform: "uppercase" }}>Disabled/Special</span>
-            <div style={{ fontSize: "14px", fontWeight: "700", color: colors.Disabled.stroke, marginTop: "2px" }}>₹20/hr</div>
+            <span style={{ fontSize: "10px", color: "var(--muted)", fontWeight: "600", textTransform: "uppercase" }}>Taxi / Special</span>
+            <div style={{ fontSize: "14px", fontWeight: "700", color: colors.Taxi.stroke, marginTop: "2px" }}>₹20/hr</div>
           </div>
         </div>
     </div>
