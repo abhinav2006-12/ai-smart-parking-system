@@ -27,6 +27,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   const [alreadyCheckedInAlert, setAlreadyCheckedInAlert] = useState(null); // { number, entryTime }
   const [alertCountdown, setAlertCountdown] = useState(5);
   const [isManual, setIsManual] = useState(false);
+  const [captureMode, setCaptureMode] = useState("live");
   const autoCheckInIntervalRef = useRef(null);
   const alertIntervalRef = useRef(null);
 
@@ -394,6 +395,12 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
           <PlateCapture
             key={captureSessionId}
             label="Vehicle Photo"
+            onModeChange={(m) => {
+              setCaptureMode(m);
+              if (m === "live") {
+                setIsManual(false);
+              }
+            }}
             onDetected={async (text, photoData, raw) => {
               if (isManual && !photoData) {
                 return;
@@ -486,31 +493,33 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
           />
         </div>
 
-        <div style={{ marginTop: 16 }}>
-          <label>Vehicle Number (confirm / edit)</label>
-          <input
-            type="text"
-            className="mono"
-            value={plateNumber}
-            onFocus={() => setIsManual(true)}
-            onChange={(e) => {
-              setIsManual(true);
-              setPlateNumber(e.target.value.toUpperCase());
-            }}
-            placeholder="KL07AB1234"
-            style={{ fontWeight: 600, letterSpacing: "0.02em" }}
-          />
-          {plateNumber && !isLikelyValidIndianPlate(plateNumber) && (
-            <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 6, fontWeight: 500 }}>
-              Does not quite match the standard format - double check.
-            </div>
-          )}
-          {liveDuplicate && (
-            <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6, fontWeight: 600 }}>
-              ⚠ Already checked in at {fmtDateTime(liveDuplicate.entryTime)} — this looks like a duplicate.
-            </div>
-          )}
-        </div>
+        {captureMode === "manual" && (
+          <div style={{ marginTop: 16 }}>
+            <label>Vehicle Number (confirm / edit)</label>
+            <input
+              type="text"
+              className="mono"
+              value={plateNumber}
+              onFocus={() => setIsManual(true)}
+              onChange={(e) => {
+                setIsManual(true);
+                setPlateNumber(e.target.value.toUpperCase());
+              }}
+              placeholder="KL07AB1234"
+              style={{ fontWeight: 600, letterSpacing: "0.02em" }}
+            />
+            {plateNumber && !isLikelyValidIndianPlate(plateNumber) && (
+              <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 6, fontWeight: 500 }}>
+                Does not quite match the standard format - double check.
+              </div>
+            )}
+            {liveDuplicate && (
+              <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6, fontWeight: 600 }}>
+                ⚠ Already checked in at {fmtDateTime(liveDuplicate.entryTime)} — this looks like a duplicate.
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ marginTop: 14 }}>
           <label>Entry Time</label>
@@ -525,7 +534,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
       </div>
 
       <div style={{ width: "100%", maxWidth: 580, flex: "1 1 360px" }}>
-        <PriceChartCard inline />
+        <PriceChartCard rates={store.settings.rates} inline />
       </div>
     </div>
   );

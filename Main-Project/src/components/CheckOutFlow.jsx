@@ -24,6 +24,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [paid, setPaid] = useState(false);
   const [qrUrl, setQrUrl] = useState(null);
   const [isManual, setIsManual] = useState(false);
+  const [captureMode, setCaptureMode] = useState("live");
 
   // Bumped every time we want a genuinely fresh camera session
   const [captureSessionId, setCaptureSessionId] = useState(0);
@@ -345,6 +346,10 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         <PlateCapture
           key={captureSessionId}
           label="Vehicle Photo"
+          onModeChange={(m) => {
+            setCaptureMode(m);
+            if (m === "live") setIsManual(false);
+          }}
           onDetected={(text, photoData) => {
             if (isManual && !photoData) {
               return;
@@ -371,31 +376,31 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         />
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <label>Vehicle Number (confirm / edit)</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            className="mono"
-            value={plateNumber}
-            onFocus={() => setIsManual(true)}
-            onChange={(e) => {
-              setIsManual(true);
-              setPlateNumber(e.target.value.toUpperCase());
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                tryMatch(plateNumber);
-              }
-            }}
-            placeholder="KL07AB1234"
-            style={{ fontWeight: 600, letterSpacing: "0.02em" }}
-          />
-          <button type="button" onClick={() => tryMatch(plateNumber)} className="btn btn-secondary" style={{ flexShrink: 0 }}>
-            Find
-          </button>
+      {captureMode === "manual" && (
+        <div style={{ marginTop: 16 }}>
+          <label>Vehicle Number (confirm / edit)</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              className="mono"
+              value={plateNumber}
+              onFocus={() => setIsManual(true)}
+              onChange={(e) => {
+                setIsManual(true);
+                setPlateNumber(e.target.value.toUpperCase());
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") tryMatch(plateNumber);
+              }}
+              placeholder="KL07AB1234"
+              style={{ fontWeight: 600, letterSpacing: "0.02em" }}
+            />
+            <button type="button" onClick={() => tryMatch(plateNumber)} className="btn btn-secondary" style={{ flexShrink: 0 }}>
+              Find
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {matched && (
         <div className="fade-up" style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 18 }}>

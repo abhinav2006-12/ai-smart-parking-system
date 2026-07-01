@@ -15,6 +15,7 @@ import {
   isSessionOccupied,
   forceResetAdminSession,
 } from "./lib/supabase";
+import { logActivity } from "./lib/activityLog";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 const GuestPanel = lazy(() => import("./components/GuestPanel"));
@@ -35,6 +36,7 @@ export default function App() {
   const [theme, toggleTheme] = useTheme();
   const isOnline = useOnlineStatus();
   const [adminAuthed, setAdminAuthed] = useState(false);
+  const [adminUser, setAdminUser] = useState(null);
   const [sessionKicked, setSessionKicked] = useState(false);
   const [sessionBlocked, setSessionBlocked] = useState(false); // Another device is active
   const tokenRef = useRef(null);   // Our current session token
@@ -49,11 +51,13 @@ export default function App() {
       if (e.data === "admin-login") {
         // Another tab in this browser logged in — kick this one
         setAdminAuthed(false);
+        setAdminUser(null);
         setSessionKicked(true);
         tokenRef.current = null;
       } else if (e.data === "admin-logout") {
         setSessionKicked(false);
         setSessionBlocked(false);
+        setAdminUser(null);
       }
     };
 
@@ -78,6 +82,7 @@ export default function App() {
       // If claimAdminSession says it's blocked AND not our own token, we were kicked
       if (!result.ok) {
         setAdminAuthed(false);
+        setAdminUser(null);
         setSessionKicked(true);
         tokenRef.current = null;
       }
@@ -103,8 +108,9 @@ export default function App() {
     return () => window.removeEventListener("beforeunload", onUnload);
   }, []);
 
-  const handleAdminLogin = useCallback(async (token) => {
+  const handleAdminLogin = useCallback(async (token, user) => {
     tokenRef.current = token;
+    setAdminUser(user);
     setSessionKicked(false);
     setSessionBlocked(false);
     setAdminAuthed(true);
@@ -113,14 +119,18 @@ export default function App() {
   }, []);
 
   const handleAdminLogout = useCallback(async () => {
+    if (adminUser) {
+      await logActivity(adminUser, "Logged out");
+    }
     await releaseAdminSession(tokenRef.current);
     tokenRef.current = null;
     setAdminAuthed(false);
+    setAdminUser(null);
     setSessionKicked(false);
     setSessionBlocked(false);
     navigate("/");
     channelRef.current?.postMessage("admin-logout");
-  }, [navigate]);
+  }, [navigate, adminUser]);
 
   const [guestOpen, setGuestOpen] = useState(false);
 
@@ -132,6 +142,7 @@ export default function App() {
         tokenRef.current = null;
       }
       setAdminAuthed(false);
+      setAdminUser(null);
       setSessionKicked(false);
       setSessionBlocked(false);
     }
@@ -212,6 +223,7 @@ export default function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onRefresh={refreshStore}
+          adminUser={adminUser}
         />
       </Suspense>
     );

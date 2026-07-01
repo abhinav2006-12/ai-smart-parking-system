@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import ThemeToggle from "./ThemeToggle";
+import { loginAdminAccount } from "../lib/adminAuth";
+import { logActivity } from "../lib/activityLog";
 
 export default function AdminLogin({
   theme,
@@ -48,9 +50,10 @@ export default function AdminLogin({
     setLoading(true);
     setErr("");
 
-    // Simulate authenticating for a high-end feel
+    // Authenticate using multi-admin database auth
     setTimeout(async () => {
-      if (email.toLowerCase().trim() === "parkpilot@gmail.com" && password === "parkpilot2025") {
+      try {
+        const user = await loginAdminAccount(email, password);
         // Check/claim cross-device session before granting access
         if (onSessionBlockedCheck) {
           const result = await onSessionBlockedCheck();
@@ -58,14 +61,16 @@ export default function AdminLogin({
             setLoading(false);
             return; // sessionBlocked state already set in App.jsx
           }
+          await logActivity(user, "Logged in");
           setSuccess(true);
-          setTimeout(() => onSuccess(result.token), 800);
+          setTimeout(() => onSuccess(result.token, user), 800);
         } else {
+          await logActivity(user, "Logged in");
           setSuccess(true);
-          setTimeout(() => onSuccess(null), 800);
+          setTimeout(() => onSuccess(null, user), 800);
         }
         setAttempts(0);
-      } else {
+      } catch (err) {
         const nextAttempts = attempts + 1;
         if (nextAttempts >= 5) {
           setLockoutSecs(30);
@@ -73,7 +78,7 @@ export default function AdminLogin({
           setErr("Too many failed login attempts. Locked out for 30 seconds.");
         } else {
           setAttempts(nextAttempts);
-          setErr(`Invalid administrator credentials. Attempt ${nextAttempts} of 5.`);
+          setErr(err.message || `Invalid administrator credentials. Attempt ${nextAttempts} of 5.`);
         }
         setLoading(false);
       }
