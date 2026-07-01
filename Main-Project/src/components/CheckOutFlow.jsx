@@ -11,16 +11,11 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [notFoundCountdown, setNotFoundCountdown] = useState(5);
   const [paid, setPaid] = useState(false);
   const [qrUrl, setQrUrl] = useState(null);
-  const [isManual, setIsManual] = useState(false);
 
   // Bumped every time we want a genuinely fresh camera session
   const [captureSessionId, setCaptureSessionId] = useState(0);
   const notFoundIntervalRef = useRef(null);
   const lastAutoCheckedRef = useRef("");
-  const prevAlphanumericRef = useRef("");
-
-  const cleanFormat = (str) => (str || "").replace(/[\s-]/g, "").toUpperCase();
-  const cleanAlphanumeric = (str) => (str || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
   // Cleanup on unmount
   useEffect(() => {
@@ -29,11 +24,8 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
     };
   }, []);
 
-  const resetScanner = (keepPlateNumber = false) => {
-    if (!keepPlateNumber) {
-      setPlateNumber("");
-      prevAlphanumericRef.current = "";
-    }
+  const resetScanner = () => {
+    setPlateNumber("");
     setPhoto(null);
     setMatched(null);
     setNotFoundAlert(null);
@@ -53,18 +45,18 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         clearInterval(notFoundIntervalRef.current);
         notFoundIntervalRef.current = null;
         setNotFoundAlert(null);
-        resetScanner(true);
+        resetScanner();
       }
     }, 1000);
   };
 
   const tryMatch = (plate) => {
-    const cleanPlate = cleanFormat(plate);
+    const cleanPlate = plate.trim().toUpperCase();
     if (!cleanPlate) {
       setMatched(null);
       return;
     }
-    const found = store.vehicles.find((v) => cleanFormat(v.number) === cleanPlate && v.status === "parked");
+    const found = store.vehicles.find((v) => v.number === cleanPlate && v.status === "parked");
     if (found) {
       const now = Date.now();
       const mins = durationMinutes(found.entryTime, now);
@@ -72,16 +64,15 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
       const hours = Math.max(rate.minHours, Math.ceil(mins / 60));
       const fee = hours * rate.hourly;
       setMatched({ ...found, exitTimePreview: now, durationMinsPreview: mins, hoursBilled: hours, feePreview: fee });
-      prevAlphanumericRef.current = cleanAlphanumeric(plate);
     } else {
       setMatched(null);
-      showNotFoundAlert(plate);
+      showNotFoundAlert(cleanPlate);
     }
   };
 
   // Auto-detect: fires tryMatch as soon as a valid strict plate is in the field
   useEffect(() => {
-    const clean = cleanFormat(plateNumber);
+    const clean = plateNumber.trim().toUpperCase();
     if (isStrictIndianPlate(clean) && clean !== lastAutoCheckedRef.current) {
       lastAutoCheckedRef.current = clean;
       tryMatch(clean);
@@ -90,17 +81,6 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
       lastAutoCheckedRef.current = "";
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plateNumber]);
-
-  // Reset payment and QR details instantly only if the alphanumeric values change
-  useEffect(() => {
-    const currentAlphanumeric = cleanAlphanumeric(plateNumber);
-    if (currentAlphanumeric !== prevAlphanumericRef.current) {
-      setMatched(null);
-      setPaid(false);
-      setQrUrl(null);
-      prevAlphanumericRef.current = currentAlphanumeric;
-    }
   }, [plateNumber]);
 
   // Generate QR code when a vehicle is matched
@@ -179,7 +159,6 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
               setPaid(false);
               setQrUrl(null);
               lastAutoCheckedRef.current = "";
-              prevAlphanumericRef.current = "";
               setCaptureSessionId((n) => n + 1);
             }}
             className="btn btn-secondary"
@@ -305,7 +284,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
                   notFoundIntervalRef.current = null;
                 }
                 setNotFoundAlert(null);
-                resetScanner(true);
+                resetScanner();
               }}
               className="btn btn-secondary"
               style={{ width: "100%", marginTop: 16, padding: "7px 12px", fontSize: 13 }}
@@ -326,9 +305,6 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
           key={captureSessionId}
           label="Vehicle Photo"
           onDetected={(text, photoData) => {
-            if (isManual && !photoData) {
-              return;
-            }
             setPlateNumber(text);
             setPhoto(photoData);
             if (photoData) {
@@ -340,27 +316,19 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
 
       <div style={{ marginTop: 16 }}>
         <label>Vehicle Number (confirm / edit)</label>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            tryMatch(plateNumber);
-          }}
-          style={{ display: "flex", gap: 8, width: "100%" }}
-        >
+        <div style={{ display: "flex", gap: 8 }}>
           <input
             type="text"
             className="mono"
             value={plateNumber}
             onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-            onFocus={() => setIsManual(true)}
-            onBlur={() => setIsManual(false)}
             placeholder="KL07AB1234"
-            style={{ fontWeight: 600, letterSpacing: "0.02em", flex: 1 }}
+            style={{ fontWeight: 600, letterSpacing: "0.02em" }}
           />
-          <button type="submit" className="btn btn-secondary" style={{ flexShrink: 0 }}>
+          <button type="button" onClick={() => tryMatch(plateNumber)} className="btn btn-secondary" style={{ flexShrink: 0 }}>
             Find
           </button>
-        </form>
+        </div>
       </div>
 
       {matched && (

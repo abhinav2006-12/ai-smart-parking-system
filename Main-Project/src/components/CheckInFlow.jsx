@@ -21,11 +21,8 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   const [countdown, setCountdown] = useState(5);
   const [alreadyCheckedInAlert, setAlreadyCheckedInAlert] = useState(null); // { number, entryTime }
   const [alertCountdown, setAlertCountdown] = useState(5);
-  const [isManual, setIsManual] = useState(false);
   const autoCheckInIntervalRef = useRef(null);
   const alertIntervalRef = useRef(null);
-
-  const cleanFormat = (str) => (str || "").replace(/[\s-]/g, "").toUpperCase();
 
   useEffect(() => {
     return () => {
@@ -72,9 +69,9 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   // that vehicle is already parked. This is derived directly from render
   // state (no extra effect/state needed) so it updates the instant the plate
   // becomes valid, rather than waiting for the final Confirm click.
-  const cleanLivePlate = cleanFormat(plateNumber);
+  const cleanLivePlate = plateNumber.trim().toUpperCase();
   const liveDuplicate =
-    isStrictIndianPlate(cleanLivePlate) && store.vehicles.find((v) => cleanFormat(v.number) === cleanLivePlate && v.status === "parked");
+    isStrictIndianPlate(cleanLivePlate) && store.vehicles.find((v) => v.number === cleanLivePlate && v.status === "parked");
 
   const handleSubmit = () => {
     const cleanPlate = plateNumber.trim().toUpperCase();
@@ -86,8 +83,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
       setError(`No ${vehicleType} slots available right now.`);
       return;
     }
-    const cleanComp = cleanFormat(cleanPlate);
-    const alreadyParked = store.vehicles.find((v) => cleanFormat(v.number) === cleanComp && v.status === "parked");
+    const alreadyParked = store.vehicles.find((v) => v.number === cleanPlate && v.status === "parked");
     if (alreadyParked) {
       setError("This vehicle is already checked in.");
       return;
@@ -390,9 +386,6 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
             key={captureSessionId}
             label="Vehicle Photo"
             onDetected={async (text, photoData, raw) => {
-              if (isManual && !photoData) {
-                return;
-              }
               setPlateNumber(text);
               setPhoto(photoData);
 
@@ -418,8 +411,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                   setError(`No ${activeVehicleType} slots available right now.`);
                   return;
                 }
-                const cleanComp = cleanFormat(cleanPlate);
-                const alreadyParked = store.vehicles.find((v) => cleanFormat(v.number) === cleanComp && v.status === "parked");
+                const alreadyParked = store.vehicles.find((v) => v.number === cleanPlate && v.status === "parked");
                 if (alreadyParked) {
                   // Show the "already checked in" alert modal instead of a plain error
                   setAlreadyCheckedInAlert({ number: cleanPlate, entryTime: alreadyParked.entryTime });
@@ -486,8 +478,6 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
             className="mono"
             value={plateNumber}
             onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-            onFocus={() => setIsManual(true)}
-            onBlur={() => setIsManual(false)}
             placeholder="KL07AB1234"
             style={{ fontWeight: 600, letterSpacing: "0.02em" }}
           />

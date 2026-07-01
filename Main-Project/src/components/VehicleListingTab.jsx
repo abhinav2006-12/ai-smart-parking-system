@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { fmtMoney, fmtDateTime, formatDuration } from "../lib/format";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 8;
 
 export default function VehicleListingTab({ store, onRefresh }) {
   const [search, setSearch] = useState("");
@@ -92,7 +92,7 @@ export default function VehicleListingTab({ store, onRefresh }) {
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">All Status</option>
               <option value="parked">Parked</option>
-              <option value="completed">Checked Out</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
           <div style={{ flex: "1 1 140px" }}>
@@ -103,19 +103,6 @@ export default function VehicleListingTab({ store, onRefresh }) {
               <option value="taxi">Taxi</option>
             </select>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setSearch("");
-              setStatusFilter("all");
-              setTypeFilter("all");
-              setPage(1);
-            }}
-            className="btn btn-secondary"
-            style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}
-          >
-            Reset
-          </button>
         </div>
 
         <div style={{ overflowX: "auto" }}>
@@ -148,7 +135,7 @@ export default function VehicleListingTab({ store, onRefresh }) {
                         color: v.status === "parked" ? "var(--warning)" : "var(--success)",
                       }}
                     >
-                      {v.status === "parked" ? "Parked" : "Checked Out"}
+                      {v.status === "parked" ? "Parked" : "Completed"}
                     </span>
                   </td>
                 </tr>
