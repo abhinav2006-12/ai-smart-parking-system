@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { fmtMoney, fmtDateTime, formatDuration } from "../lib/format";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 8;
 
 export default function VehicleListingTab({ store, onRefresh }) {
   const [search, setSearch] = useState("");
@@ -54,52 +54,33 @@ export default function VehicleListingTab({ store, onRefresh }) {
               </div>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => {
-                setSearch("");
-                setStatusFilter("all");
-                setTypeFilter("all");
-                setPage(1);
+          <button
+            id="vehicle-listing-refresh-btn"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="btn btn-secondary"
+            title="Refresh vehicle list from database"
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", fontSize: 13, fontWeight: 600, minWidth: 110 }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              style={{
+                transition: "transform 0.4s ease",
+                transform: refreshing ? "rotate(360deg)" : "rotate(0deg)",
+                animation: refreshing ? "spin 0.7s linear infinite" : "none",
               }}
-              className="btn btn-secondary"
-              title="Reset all filters"
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ opacity: 0.85 }}>
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-              </svg>
-              Reset
-            </button>
-            <button
-              id="vehicle-listing-refresh-btn"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="btn btn-secondary"
-              title="Refresh vehicle list from database"
-              style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", fontSize: 13, fontWeight: 600, minWidth: 110 }}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                style={{
-                  transition: "transform 0.4s ease",
-                  transform: refreshing ? "rotate(360deg)" : "rotate(0deg)",
-                  animation: refreshing ? "spin 0.7s linear infinite" : "none",
-                }}
-              >
-                <path d="M23 4v6h-6" />
-                <path d="M1 20v-6h6" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-              {refreshing ? "Refreshing…" : "Refresh"}
-            </button>
-          </div>
+              <path d="M23 4v6h-6" />
+              <path d="M1 20v-6h6" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
         </div>
 
         {/* Filters */}
@@ -111,7 +92,7 @@ export default function VehicleListingTab({ store, onRefresh }) {
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">All Status</option>
               <option value="parked">Parked</option>
-              <option value="completed">Checked Out</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
           <div style={{ flex: "1 1 140px" }}>
@@ -154,7 +135,7 @@ export default function VehicleListingTab({ store, onRefresh }) {
                         color: v.status === "parked" ? "var(--warning)" : "var(--success)",
                       }}
                     >
-                      {v.status === "parked" ? "Parked" : "Checked Out"}
+                      {v.status === "parked" ? "Parked" : "Completed"}
                     </span>
                   </td>
                 </tr>

@@ -23,7 +23,7 @@ export default function AdminPanel({ store, updateStore, onLogout, theme, onTogg
       <aside className="admin-sidebar">
         {/* Sidebar Header: Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/parkpilot_transparent.png" alt="ParkPilot Logo" style={{ width: 28, height: 28, borderRadius: 7, objectFit: "contain" }} />
+          <img src={theme === "dark" ? "/parkpilot_darktheme.png" : "/parkpilot_lighttheme.png"} alt="ParkPilot Logo" style={{ width: 28, height: 28, borderRadius: 7, objectFit: "contain" }} />
           <span className="display admin-sidebar-logo-text" style={{ fontWeight: 600 }}>
             ParkPilot Admin
           </span>
@@ -74,7 +74,7 @@ export default function AdminPanel({ store, updateStore, onLogout, theme, onTogg
             width: "100%",
           }}
         >
-          {tab === "dashboard" && <DashboardTab store={store} onRefresh={onRefresh} />}
+          {tab === "dashboard" && <DashboardTab store={store} />}
           {tab === "vehicles" && <VehicleListingTab store={store} onRefresh={onRefresh} />}
           {tab === "settings" && (
             <SettingsTab store={store} updateStore={updateStore} onLogout={onLogout} />

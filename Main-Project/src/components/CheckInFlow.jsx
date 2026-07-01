@@ -14,23 +14,15 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   const [vehicleType, setVehicleType] = useState("standard");
   const [plateNumber, setPlateNumber] = useState("");
   const [photo, setPhoto] = useState(null);
-  const [isManual, setIsManual] = useState(false);
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState("");
   const [captureSessionId, setCaptureSessionId] = useState(0);
   const [autoCheckInSuccess, setAutoCheckInSuccess] = useState(null);
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(5);
   const [alreadyCheckedInAlert, setAlreadyCheckedInAlert] = useState(null); // { number, entryTime }
   const [alertCountdown, setAlertCountdown] = useState(5);
   const autoCheckInIntervalRef = useRef(null);
   const alertIntervalRef = useRef(null);
-
-  const resetForm = () => {
-    setPlateNumber("");
-    setPhoto(null);
-    setIsManual(false);
-    setCaptureSessionId((id) => id + 1);
-  };
 
   useEffect(() => {
     return () => {
@@ -78,14 +70,8 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
   // state (no extra effect/state needed) so it updates the instant the plate
   // becomes valid, rather than waiting for the final Confirm click.
   const cleanLivePlate = plateNumber.trim().toUpperCase();
-  const liveDuplicate = (() => {
-    if (!isStrictIndianPlate(cleanLivePlate)) return null;
-    const cleanSearch = cleanLivePlate.replace(/[^A-Z0-9]/g, "");
-    return store.vehicles.find((v) => {
-      if (v.status !== "parked") return false;
-      return v.number.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") === cleanSearch;
-    });
-  })();
+  const liveDuplicate =
+    isStrictIndianPlate(cleanLivePlate) && store.vehicles.find((v) => v.number === cleanLivePlate && v.status === "parked");
 
   const handleSubmit = () => {
     const cleanPlate = plateNumber.trim().toUpperCase();
@@ -97,10 +83,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
       setError(`No ${vehicleType} slots available right now.`);
       return;
     }
-    const alreadyParked = store.vehicles.find((v) => {
-      if (v.status !== "parked") return false;
-      return v.number.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") === cleanPlate.replace(/[^A-Z0-9]/g, "");
-    });
+    const alreadyParked = store.vehicles.find((v) => v.number === cleanPlate && v.status === "parked");
     if (alreadyParked) {
       setError("This vehicle is already checked in.");
       return;
@@ -249,7 +232,9 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 onClick={() => {
                   if (alertIntervalRef.current) { clearInterval(alertIntervalRef.current); alertIntervalRef.current = null; }
                   setAlreadyCheckedInAlert(null);
-                  resetForm();
+                  setPlateNumber("");
+                  setPhoto(null);
+                  setCaptureSessionId((id) => id + 1);
                 }}
                 className="btn btn-secondary"
                 style={{ width: "100%", marginTop: 16, padding: "7px 12px", fontSize: 13 }}
@@ -306,7 +291,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 </svg>
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "var(--ink)" }}>Auto Checked In</h3>
-              <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 16px" }}>Vehicle successfully registered. Thank you!</p>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 16px" }}>Vehicle successfully registered</p>
               
               <div className="mono" style={{ fontSize: 24, fontWeight: 700, letterSpacing: "0.03em", background: "var(--surface-muted)", padding: "12px 16px", borderRadius: 8, color: "var(--ink)", border: "1px solid var(--border)", marginBottom: 16 }}>
                 {autoCheckInSuccess.number}
@@ -401,15 +386,6 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
             key={captureSessionId}
             label="Vehicle Photo"
             onDetected={async (text, photoData, raw) => {
-              if (text === "" && !photoData) {
-                setPlateNumber("");
-                setPhoto(null);
-                setIsManual(false);
-                return;
-              }
-              if (isManual && !photoData) {
-                return;
-              }
               setPlateNumber(text);
               setPhoto(photoData);
 
@@ -435,13 +411,10 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                   setError(`No ${activeVehicleType} slots available right now.`);
                   return;
                 }
-                const alreadyParked = store.vehicles.find((v) => {
-                  if (v.status !== "parked") return false;
-                  return v.number.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") === cleanPlate.replace(/[^A-Z0-9]/g, "");
-                });
+                const alreadyParked = store.vehicles.find((v) => v.number === cleanPlate && v.status === "parked");
                 if (alreadyParked) {
                   // Show the "already checked in" alert modal instead of a plain error
-                  setAlreadyCheckedInAlert({ number: alreadyParked.number, entryTime: alreadyParked.entryTime });
+                  setAlreadyCheckedInAlert({ number: cleanPlate, entryTime: alreadyParked.entryTime });
                   setAlertCountdown(5);
                   if (alertIntervalRef.current) clearInterval(alertIntervalRef.current);
                   let ac = 5;
@@ -452,7 +425,9 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                       clearInterval(alertIntervalRef.current);
                       alertIntervalRef.current = null;
                       setAlreadyCheckedInAlert(null);
-                      resetForm();
+                      setPlateNumber("");
+                      setPhoto(null);
+                      setCaptureSessionId((id) => id + 1);
                     }
                   }, 1000);
                   return;
@@ -475,10 +450,10 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                 setAutoCheckInSuccess(entry);
                 setError("");
 
-                // Dismiss overlay and restart scanning session after 10 seconds with dynamic countdown
+                // Dismiss overlay and restart scanning session after 5 seconds with dynamic countdown
                 if (autoCheckInIntervalRef.current) clearInterval(autoCheckInIntervalRef.current);
-                setCountdown(10);
-                let currentCountdown = 10;
+                setCountdown(5);
+                let currentCountdown = 5;
                 autoCheckInIntervalRef.current = setInterval(() => {
                   currentCountdown -= 1;
                   setCountdown(currentCountdown);
@@ -486,7 +461,9 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
                     clearInterval(autoCheckInIntervalRef.current);
                     autoCheckInIntervalRef.current = null;
                     setAutoCheckInSuccess(null);
-                    resetForm();
+                    setPlateNumber("");
+                    setPhoto(null);
+                    setCaptureSessionId((id) => id + 1);
                   }
                 }, 1000);
               }
@@ -500,11 +477,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
             type="text"
             className="mono"
             value={plateNumber}
-            onFocus={() => setIsManual(true)}
-            onChange={(e) => {
-              setIsManual(true);
-              setPlateNumber(e.target.value.toUpperCase());
-            }}
+            onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
             placeholder="KL07AB1234"
             style={{ fontWeight: 600, letterSpacing: "0.02em" }}
           />

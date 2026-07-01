@@ -46,7 +46,7 @@ function GuestHeader({ onBack, backLabel, theme, onToggleTheme }) {
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/parkpilot_transparent.png" alt="ParkPilot Logo" style={{ height: 28, objectFit: "contain" }} />
+            <img src={theme === "dark" ? "/parkpilot_darktheme.png" : "/parkpilot_lighttheme.png"} alt="ParkPilot Logo" style={{ height: 28, objectFit: "contain" }} />
           </div>
 
           <div style={{ width: 1, height: 16, background: "var(--border)" }} />
