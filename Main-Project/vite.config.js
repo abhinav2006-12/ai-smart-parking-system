@@ -6,7 +6,7 @@ function vercelApiPlugin() {
   return {
     name: 'vercel-api-plugin',
     configureServer(server) {
-      server.middlewares.use('/api/anpr', async (req, res, next) => {
+      server.middlewares.use('/api/anpr', async (req, res, _next) => {
         console.log('[ANPR Middleware] Request received:', req.method, req.url);
         const env = loadEnv(server.config.mode, process.cwd(), '');
         if (env.PLATERECOGNIZER_TOKEN) {

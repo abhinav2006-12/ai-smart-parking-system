@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import PlateCapture from "./PlateCapture";
-import { uid, fmtDateTime, generateVehicleId } from "../lib/format";
+import { fmtDateTime, generateVehicleId } from "../lib/format";
 import { isLikelyValidIndianPlate, isStrictIndianPlate, detectEVFromPlate } from "../lib/plate";
 import { PriceChartCard } from "./PriceChartOverlay";
 
