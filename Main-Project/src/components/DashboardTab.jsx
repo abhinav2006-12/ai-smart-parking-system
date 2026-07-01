@@ -16,8 +16,22 @@ import { fmtMoney, isSameDay } from "../lib/format";
 
 const ACCENT = "#2F4858";
 
-export default function DashboardTab({ store }) {
+export default function DashboardTab({ store, onRefresh }) {
   const [selectedSlotType, setSelectedSlotType] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      if (onRefresh) await onRefresh();
+    } finally {
+      setRefreshing(false);
+      setLastRefreshed(new Date());
+    }
+  };
+
   const now = new Date();
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
@@ -83,7 +97,7 @@ export default function DashboardTab({ store }) {
   const topStats = [
     { label: "Total Vehicles", value: totalVehicles, color: "var(--ink)" },
     { label: "Active Parking", value: activeParking, color: "var(--ink)" },
-    { label: "Left Today", value: leftToday, color: "var(--ink)" },
+    { label: "Checked Out Today", value: leftToday, color: "var(--ink)" },
   ];
 
   const bottomStats = [
@@ -94,6 +108,44 @@ export default function DashboardTab({ store }) {
 
   return (
     <div className="fade-up" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Header Row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <h1 className="display" style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Dashboard Overview</h1>
+          {lastRefreshed && (
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>
+              Last refreshed: {lastRefreshed.toLocaleTimeString()}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="btn btn-secondary"
+          title="Refresh dashboard stats from database"
+          style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", fontSize: 13, fontWeight: 600, minWidth: 110 }}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            style={{
+              transition: "transform 0.4s ease",
+              transform: refreshing ? "rotate(360deg)" : "rotate(0deg)",
+              animation: refreshing ? "spin 0.7s linear infinite" : "none",
+            }}
+          >
+            <path d="M23 4v6h-6" />
+            <path d="M1 20v-6h6" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+
       {/* Top Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
         {topStats.map((s, i) => (

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import PlateCapture from "./PlateCapture";
 import { uid, fmtMoney, fmtDateTime, formatDuration, durationMinutes, buildUpiUri } from "../lib/format";
-import { isStrictIndianPlate } from "../lib/plate";
 
 export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [plateNumber, setPlateNumber] = useState("");
@@ -11,11 +10,11 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [notFoundCountdown, setNotFoundCountdown] = useState(5);
   const [paid, setPaid] = useState(false);
   const [qrUrl, setQrUrl] = useState(null);
+  const [isManual, setIsManual] = useState(false);
 
   // Bumped every time we want a genuinely fresh camera session
   const [captureSessionId, setCaptureSessionId] = useState(0);
   const notFoundIntervalRef = useRef(null);
-  const lastAutoCheckedRef = useRef("");
 
   // Cleanup on unmount
   useEffect(() => {
@@ -24,12 +23,14 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
     };
   }, []);
 
-  const resetScanner = () => {
-    setPlateNumber("");
+  const resetScanner = (keepPlate = false) => {
+    if (!keepPlate) {
+      setPlateNumber("");
+      setIsManual(false);
+    }
     setPhoto(null);
     setMatched(null);
     setNotFoundAlert(null);
-    lastAutoCheckedRef.current = "";
     setCaptureSessionId((n) => n + 1);
   };
 
@@ -45,7 +46,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         clearInterval(notFoundIntervalRef.current);
         notFoundIntervalRef.current = null;
         setNotFoundAlert(null);
-        resetScanner();
+        resetScanner(true);
       }
     }, 1000);
   };
@@ -56,7 +57,12 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
       setMatched(null);
       return;
     }
-    const found = store.vehicles.find((v) => v.number === cleanPlate && v.status === "parked");
+    const found = store.vehicles.find((v) => {
+      if (v.status !== "parked") return false;
+      const dbNum = v.number.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const searchNum = cleanPlate.replace(/[^A-Z0-9]/g, "");
+      return dbNum === searchNum;
+    });
     if (found) {
       const now = Date.now();
       const mins = durationMinutes(found.entryTime, now);
@@ -70,18 +76,6 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
     }
   };
 
-  // Auto-detect: fires tryMatch as soon as a valid strict plate is in the field
-  useEffect(() => {
-    const clean = plateNumber.trim().toUpperCase();
-    if (isStrictIndianPlate(clean) && clean !== lastAutoCheckedRef.current) {
-      lastAutoCheckedRef.current = clean;
-      tryMatch(clean);
-    }
-    if (!isStrictIndianPlate(clean)) {
-      lastAutoCheckedRef.current = "";
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plateNumber]);
 
   // Generate QR code when a vehicle is matched
   useEffect(() => {
@@ -153,12 +147,12 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
           <button
             onClick={() => {
               setPlateNumber("");
+              setIsManual(false);
               setPhoto(null);
               setMatched(null);
               setNotFoundAlert(null);
               setPaid(false);
               setQrUrl(null);
-              lastAutoCheckedRef.current = "";
               setCaptureSessionId((n) => n + 1);
             }}
             className="btn btn-secondary"
@@ -284,7 +278,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
                   notFoundIntervalRef.current = null;
                 }
                 setNotFoundAlert(null);
-                resetScanner();
+                resetScanner(true);
               }}
               className="btn btn-secondary"
               style={{ width: "100%", marginTop: 16, padding: "7px 12px", fontSize: 13 }}
@@ -305,6 +299,15 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
           key={captureSessionId}
           label="Vehicle Photo"
           onDetected={(text, photoData) => {
+            if (text === "" && !photoData) {
+              setIsManual(false);
+              setPlateNumber("");
+              setPhoto(null);
+              return;
+            }
+            if (isManual && !photoData) {
+              return;
+            }
             setPlateNumber(text);
             setPhoto(photoData);
             if (photoData) {
@@ -316,19 +319,46 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
 
       <div style={{ marginTop: 16 }}>
         <label>Vehicle Number (confirm / edit)</label>
-        <input
-          type="text"
-          className="mono"
-          value={plateNumber}
-          onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              tryMatch(plateNumber);
-            }
-          }}
-          placeholder="KL07AB1234"
-          style={{ fontWeight: 600, letterSpacing: "0.02em" }}
-        />
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="text"
+            className="mono"
+            value={plateNumber}
+            onFocus={() => setIsManual(true)}
+            onChange={(e) => {
+              setIsManual(true);
+              const val = e.target.value.toUpperCase();
+              setPlateNumber(val);
+              if (matched) {
+                const cleanVal = val.replace(/[^A-Z0-9]/g, "");
+                const cleanMatched = matched.number.replace(/[^A-Z0-9]/g, "");
+                if (cleanVal !== cleanMatched) {
+                  setMatched(null);
+                  setQrUrl(null);
+                }
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                tryMatch(plateNumber);
+              }
+            }}
+            placeholder="KL07AB1234"
+            style={{ fontWeight: 600, letterSpacing: "0.02em" }}
+          />
+          <button
+            type="button"
+            onClick={() => tryMatch(plateNumber)}
+            className="btn btn-secondary"
+            style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.85 }}>
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            Find
+          </button>
+        </div>
       </div>
 
       {matched && (
