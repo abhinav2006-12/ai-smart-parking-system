@@ -3,6 +3,18 @@ import PlateCapture from "./PlateCapture";
 import { uid, fmtMoney, fmtDateTime, formatDuration, durationMinutes, buildUpiUri } from "../lib/format";
 import { isStrictIndianPlate } from "../lib/plate";
 
+const normalizeForMatching = (str) => {
+  if (!str) return "";
+  return str.toUpperCase().replace(/[^A-Z0-9]/g, "");
+};
+
+const isPeakHour = (timestamp, peakSettings) => {
+  if (!peakSettings || !peakSettings.enabled) return false;
+  const date = new Date(timestamp);
+  const currentStr = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  return currentStr >= peakSettings.start && currentStr <= peakSettings.end;
+};
+
 export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [plateNumber, setPlateNumber] = useState("");
   const [photo, setPhoto] = useState(null);
@@ -11,6 +23,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [notFoundCountdown, setNotFoundCountdown] = useState(5);
   const [paid, setPaid] = useState(false);
   const [qrUrl, setQrUrl] = useState(null);
+  const [isManual, setIsManual] = useState(false);
 
   // Bumped every time we want a genuinely fresh camera session
   const [captureSessionId, setCaptureSessionId] = useState(0);
@@ -24,12 +37,15 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
     };
   }, []);
 
-  const resetScanner = () => {
-    setPlateNumber("");
+  const resetScanner = (preservePlate = false) => {
+    if (!preservePlate) {
+      setPlateNumber("");
+      lastAutoCheckedRef.current = "";
+      setIsManual(false);
+    }
     setPhoto(null);
     setMatched(null);
     setNotFoundAlert(null);
-    lastAutoCheckedRef.current = "";
     setCaptureSessionId((n) => n + 1);
   };
 
@@ -45,35 +61,58 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         clearInterval(notFoundIntervalRef.current);
         notFoundIntervalRef.current = null;
         setNotFoundAlert(null);
-        resetScanner();
+        resetScanner(isManual);
       }
     }, 1000);
   };
 
   const tryMatch = (plate) => {
-    const cleanPlate = plate.trim().toUpperCase();
+    const cleanPlate = normalizeForMatching(plate);
     if (!cleanPlate) {
       setMatched(null);
+      setQrUrl(null);
       return;
     }
-    const found = store.vehicles.find((v) => v.number === cleanPlate && v.status === "parked");
+    // Prevent duplicate processing if already matched
+    if (matched && normalizeForMatching(matched.number) === cleanPlate) {
+      return;
+    }
+
+    const found = store.vehicles.find((v) => normalizeForMatching(v.number) === cleanPlate && v.status === "parked");
     if (found) {
       const now = Date.now();
       const mins = durationMinutes(found.entryTime, now);
       const rate = store.settings.rates[found.type] || store.settings.rates.standard;
       const hours = Math.max(rate.minHours, Math.ceil(mins / 60));
-      const fee = hours * rate.hourly;
-      setMatched({ ...found, exitTimePreview: now, durationMinsPreview: mins, hoursBilled: hours, feePreview: fee });
+      
+      const peakSettings = store.settings.rates?.peakHours || { enabled: false, start: "17:00", end: "21:00", multiplier: 1.5 };
+      const isPeak = isPeakHour(now, peakSettings);
+      const baseHourly = rate.hourly;
+      const hourlyRate = isPeak ? baseHourly * (peakSettings.multiplier || 1) : baseHourly;
+      const fee = hours * hourlyRate;
+      
+      setMatched({
+        ...found,
+        exitTimePreview: now,
+        durationMinsPreview: mins,
+        hoursBilled: hours,
+        feePreview: fee,
+        isPeakHourActive: isPeak,
+        peakMultiplierApplied: peakSettings.multiplier || 1.5
+      });
     } else {
       setMatched(null);
-      showNotFoundAlert(cleanPlate);
+      setQrUrl(null);
+      showNotFoundAlert(plate.trim().toUpperCase());
     }
   };
 
   // Auto-detect: fires tryMatch as soon as a valid strict plate is in the field
   useEffect(() => {
     const clean = plateNumber.trim().toUpperCase();
-    if (isStrictIndianPlate(clean) && clean !== lastAutoCheckedRef.current) {
+    const cleanAlpha = normalizeForMatching(clean);
+    const lastCheckedAlpha = normalizeForMatching(lastAutoCheckedRef.current);
+    if (isStrictIndianPlate(clean) && cleanAlpha !== lastCheckedAlpha) {
       lastAutoCheckedRef.current = clean;
       tryMatch(clean);
     }
@@ -148,6 +187,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         <div style={{ fontSize: 28, fontWeight: 700, marginTop: 16, color: "var(--success)" }}>{fmtMoney(matched.feePreview)}</div>
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
           Duration: {formatDuration(matched.durationMinsPreview)} · billed {matched.hoursBilled} hr
+          {matched.isPeakHourActive && ` (Peak multiplier ×${matched.peakMultiplierApplied} applied)`}
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
           <button
@@ -158,6 +198,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
               setNotFoundAlert(null);
               setPaid(false);
               setQrUrl(null);
+              setIsManual(false);
               lastAutoCheckedRef.current = "";
               setCaptureSessionId((n) => n + 1);
             }}
@@ -284,7 +325,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
                   notFoundIntervalRef.current = null;
                 }
                 setNotFoundAlert(null);
-                resetScanner();
+                resetScanner(isManual);
               }}
               className="btn btn-secondary"
               style={{ width: "100%", marginTop: 16, padding: "7px 12px", fontSize: 13 }}
@@ -305,10 +346,26 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
           key={captureSessionId}
           label="Vehicle Photo"
           onDetected={(text, photoData) => {
-            setPlateNumber(text);
-            setPhoto(photoData);
-            if (photoData) {
-              tryMatch(text);
+            if (isManual && !photoData) {
+              return;
+            }
+
+            const newAlpha = normalizeForMatching(text);
+            const currentAlpha = normalizeForMatching(plateNumber);
+
+            if (newAlpha !== currentAlpha) {
+              setPlateNumber(text);
+              setPhoto(photoData);
+              setMatched(null);
+              setQrUrl(null);
+              if (photoData) {
+                tryMatch(text);
+              }
+            } else {
+              if (photoData && !photo) {
+                setPhoto(photoData);
+                tryMatch(text);
+              }
             }
           }}
         />
@@ -321,7 +378,16 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
             type="text"
             className="mono"
             value={plateNumber}
-            onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+            onFocus={() => setIsManual(true)}
+            onChange={(e) => {
+              setIsManual(true);
+              setPlateNumber(e.target.value.toUpperCase());
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                tryMatch(plateNumber);
+              }
+            }}
             placeholder="KL07AB1234"
             style={{ fontWeight: 600, letterSpacing: "0.02em" }}
           />
@@ -348,9 +414,15 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, marginTop: 8 }}>
             <span style={{ color: "var(--muted)" }}>Rate ({matched.type})</span>
             <span style={{ fontWeight: 600 }}>
-              {fmtMoney((store.settings.rates[matched.type] || store.settings.rates.standard).hourly)}/hr · billed {matched.hoursBilled} hr
+              {fmtMoney((store.settings.rates[matched.type] || store.settings.rates.standard).hourly)}/hr
+              {matched.isPeakHourActive && ` (Peak ×${matched.peakMultiplierApplied})`} · billed {matched.hoursBilled} hr
             </span>
           </div>
+          {matched.isPeakHourActive && (
+            <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 12, color: "var(--warning)", fontWeight: 500, marginTop: 4 }}>
+              ⚠ Peak hour pricing active
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Total Fee</span>
             <span style={{ fontWeight: 700, fontSize: 22, color: "var(--success)" }}>{fmtMoney(matched.feePreview)}</span>

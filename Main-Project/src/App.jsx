@@ -137,6 +137,32 @@ export default function App() {
     }
   }, [isAdminRoute]);
 
+  // ── Session Inactivity Timeout ──────────────────────────────────────────
+  useEffect(() => {
+    if (!adminAuthed) return;
+
+    const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+    let timeoutId;
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.log("[session] Inactivity timeout reached, logging out...");
+        handleAdminLogout();
+      }, INACTIVITY_TIMEOUT);
+    };
+
+    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
+    
+    resetTimer();
+    events.forEach((name) => window.addEventListener(name, resetTimer));
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach((name) => window.removeEventListener(name, resetTimer));
+    };
+  }, [adminAuthed, handleAdminLogout]);
+
   let content;
 
   // Show offline page immediately if no network

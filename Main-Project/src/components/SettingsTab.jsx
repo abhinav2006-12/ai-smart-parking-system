@@ -18,6 +18,23 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
   const setRate = (type, field, val) =>
     setLocal((prev) => ({ ...prev, rates: { ...prev.rates, [type]: { ...prev.rates[type], [field]: Math.max(0, Number(val) || 0) } } }));
 
+  const setPeakHourSetting = (field, val) => {
+    setLocal((prev) => {
+      const currentRates = prev.rates || {};
+      const currentPeak = currentRates.peakHours || { start: "17:00", end: "21:00", multiplier: 1.5, enabled: true };
+      return {
+        ...prev,
+        rates: {
+          ...currentRates,
+          peakHours: {
+            ...currentPeak,
+            [field]: field === "enabled" ? val : (field === "multiplier" ? (Math.max(1, Number(val) || 1)) : val)
+          }
+        }
+      };
+    });
+  };
+
   const totalFromSlots = local.slotsByType.standard + local.slotsByType.ev + local.slotsByType.taxi;
 
   const save = () => {
@@ -128,6 +145,61 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
               <div>
                 <label>Payee Name</label>
                 <input type="text" value={local.upiPayeeName} onChange={(e) => setLocal((prev) => ({ ...prev, upiPayeeName: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          {/* Card 5: Peak Hour Settings */}
+          <div className="card" style={{ padding: "24px", boxShadow: "var(--shadow-sm)" }}>
+            <h3 className="display" style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+              Peak Hour Pricing
+            </h3>
+            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
+              Apply a rate multiplier during busy hours of the day.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="checkbox"
+                  id="peak-hours-enabled"
+                  checked={local.rates?.peakHours?.enabled ?? true}
+                  onChange={(e) => setPeakHourSetting("enabled", e.target.checked)}
+                  style={{ width: "auto", margin: 0 }}
+                />
+                <label htmlFor="peak-hours-enabled" style={{ marginBottom: 0, fontWeight: 600, cursor: "pointer" }}>
+                  Enable Peak Hour Multiplier
+                </label>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label>Start Time</label>
+                  <input
+                    type="time"
+                    value={local.rates?.peakHours?.start ?? "17:00"}
+                    onChange={(e) => setPeakHourSetting("start", e.target.value)}
+                    disabled={!(local.rates?.peakHours?.enabled ?? true)}
+                  />
+                </div>
+                <div>
+                  <label>End Time</label>
+                  <input
+                    type="time"
+                    value={local.rates?.peakHours?.end ?? "21:00"}
+                    onChange={(e) => setPeakHourSetting("end", e.target.value)}
+                    disabled={!(local.rates?.peakHours?.enabled ?? true)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label>Peak Multiplier (e.g. 1.5 for 150%)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  value={local.rates?.peakHours?.multiplier ?? 1.5}
+                  onChange={(e) => setPeakHourSetting("multiplier", e.target.value)}
+                  disabled={!(local.rates?.peakHours?.enabled ?? true)}
+                />
               </div>
             </div>
           </div>
