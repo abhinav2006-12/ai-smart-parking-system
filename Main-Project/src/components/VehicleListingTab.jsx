@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { fmtMoney, fmtDateTime, formatDuration } from "../lib/format";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 15;
 
 export default function VehicleListingTab({ store, onRefresh }) {
   const [search, setSearch] = useState("");
@@ -84,7 +84,7 @@ export default function VehicleListingTab({ store, onRefresh }) {
         </div>
 
         {/* Filters */}
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 18 }}>
           <div style={{ flex: "2 1 220px" }}>
             <input type="text" placeholder="Search vehicle number…" value={search} onChange={(e) => setSearch(e.target.value)} className="mono" />
           </div>
@@ -92,7 +92,7 @@ export default function VehicleListingTab({ store, onRefresh }) {
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">All Status</option>
               <option value="parked">Parked</option>
-              <option value="completed">Completed</option>
+              <option value="completed">Checked Out</option>
             </select>
           </div>
           <div style={{ flex: "1 1 140px" }}>
@@ -103,6 +103,18 @@ export default function VehicleListingTab({ store, onRefresh }) {
               <option value="taxi">Taxi</option>
             </select>
           </div>
+          <button
+            onClick={() => {
+              setSearch("");
+              setStatusFilter("all");
+              setTypeFilter("all");
+              setPage(1);
+            }}
+            className="btn btn-secondary"
+            style={{ flex: "0 0 auto", padding: "8px 16px", fontSize: 13, fontWeight: 600, height: 38, display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            Reset
+          </button>
         </div>
 
         <div style={{ overflowX: "auto" }}>
@@ -135,7 +147,7 @@ export default function VehicleListingTab({ store, onRefresh }) {
                         color: v.status === "parked" ? "var(--warning)" : "var(--success)",
                       }}
                     >
-                      {v.status === "parked" ? "Parked" : "Completed"}
+                      {v.status === "parked" ? "Parked" : "Checked Out"}
                     </span>
                   </td>
                 </tr>

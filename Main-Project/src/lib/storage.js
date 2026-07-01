@@ -9,6 +9,7 @@ export function defaultStore() {
         standard: { hourly: 20, minHours: 1 },
         ev: { hourly: 30, minHours: 1 },
         taxi: { hourly: 10, minHours: 1 },
+        peakHours: { start: "17:00", end: "21:00", multiplier: 1.5, enabled: true }
       },
       upiVpa: "parkpilot@upi",
       upiPayeeName: "ParkPilot Parking",
