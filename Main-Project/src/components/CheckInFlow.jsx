@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import PlateCapture from "./PlateCapture";
-import { uid, fmtDateTime } from "../lib/format";
+import { uid, fmtDateTime, generateVehicleId } from "../lib/format";
 import { isLikelyValidIndianPlate, isStrictIndianPlate, detectEVFromPlate } from "../lib/plate";
 import { PriceChartCard } from "./PriceChartOverlay";
 
@@ -99,7 +99,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
     }
 
     const entry = {
-      id: uid(),
+      id: generateVehicleId(vehicleType),
       number: standardFormatPlate,
       type: vehicleType,
       entryTime: Date.now(),
@@ -456,7 +456,7 @@ export default function CheckInFlow({ store, updateStore, onDone }) {
 
                 // If check-in is valid, process it
                 const entry = {
-                  id: uid(),
+                  id: generateVehicleId(activeVehicleType),
                   number: standardFormatPlate,
                   type: activeVehicleType,
                   entryTime: Date.now(),

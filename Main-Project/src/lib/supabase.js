@@ -121,6 +121,11 @@ export async function syncStoreToSupabase(newStore, oldStore) {
     if (error) throw error;
   }
 
+  const formatTime = (val) => {
+    if (!val) return null;
+    return new Date(val).toISOString();
+  };
+
   // 2. Sync Vehicles
   const oldVehiclesMap = new Map(oldStore.vehicles.map((v) => [v.id, v]));
   const vehiclesToUpsert = [];
@@ -132,8 +137,8 @@ export async function syncStoreToSupabase(newStore, oldStore) {
         id: v.id,
         number: v.number,
         type: v.type,
-        entry_time: v.entryTime,
-        exit_time: v.exitTime,
+        entry_time: formatTime(v.entryTime),
+        exit_time: formatTime(v.exitTime),
         status: v.status,
         fee: v.fee,
         duration_mins: v.durationMins,
@@ -167,7 +172,7 @@ export async function syncStoreToSupabase(newStore, oldStore) {
         id: r.id,
         vehicle_id: r.vehicleId,
         amount: r.amount,
-        date: r.date,
+        date: formatTime(r.date),
       });
     }
   }

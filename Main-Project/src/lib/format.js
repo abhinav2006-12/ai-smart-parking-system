@@ -2,6 +2,12 @@ export function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+export function generateVehicleId(type) {
+  const prefix = type === "standard" ? "parksd" : type === "ev" ? "parkev" : "parktx";
+  const num = Math.floor(100000 + Math.random() * 900000);
+  return `${prefix}${num}`;
+}
+
 export function fmtMoney(n) {
   return "₹" + Math.round(n).toLocaleString("en-IN");
 }
