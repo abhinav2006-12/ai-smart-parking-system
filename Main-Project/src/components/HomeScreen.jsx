@@ -82,7 +82,7 @@ export default function HomeScreen({ onGuest, theme, onToggleTheme }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/parkpilot_transparent.png" alt="ParkPilot Logo" style={{ height: 28, objectFit: "contain" }} />
+          <img src={theme === "dark" ? "/parkpilot_darktheme.png" : "/parkpilot_lighttheme.png"} alt="ParkPilot Logo" style={{ height: 28, objectFit: "contain" }} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span style={{ color: "var(--muted)", fontSize: 12.5 }}>AI Smart Parking System</span>
