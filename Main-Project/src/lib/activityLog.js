@@ -1,4 +1,4 @@
-﻿import { supabase } from "./supabase";
+import { supabase } from "./supabase";
 
 /**
  * Log an admin action to the admin_activity_log table.
@@ -9,7 +9,7 @@
  * @param {object} [detail] optional JSON payload
  */
 export async function logActivity(adminUser, action, detail = null) {
-  if (!adminUser?.email) return;
+  if (!adminUser?.email || !supabase) return;
   try {
     await supabase.from("admin_activity_log").insert({
       admin_id:    adminUser.id   || null,
@@ -29,6 +29,7 @@ export async function logActivity(adminUser, action, detail = null) {
  * @param {number} limit
  */
 export async function fetchActivityLog(limit = 200) {
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from("admin_activity_log")
     .select("*")

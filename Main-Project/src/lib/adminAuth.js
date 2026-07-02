@@ -1,4 +1,4 @@
-﻿import { supabase } from "./supabase";
+import { supabase } from "./supabase";
 
 // ---------------------------------------------------------------------------
 // Password hashing — Web Crypto API (SHA-256 + random salt)
@@ -42,6 +42,7 @@ const HEAD_NAME  = "ABHINAV P R";
 const HEAD_PASS  = "abhiinav@park"; // hashed on first login; never stored plain
 
 export async function seedHeadAdmin() {
+  if (!supabase) return;
   const { data } = await supabase
     .from("admin_accounts")
     .select("id")
@@ -72,6 +73,7 @@ export async function seedHeadAdmin() {
  * @returns {{ id, name, email, phone, role }}
  */
 export async function loginAdminAccount(email, password) {
+  if (!supabase) throw new Error("Supabase is not configured. Please check your credentials in the environment configuration.");
   // Ensure head admin exists
   await seedHeadAdmin();
 
@@ -103,6 +105,7 @@ export async function loginAdminAccount(email, password) {
 
 /** List all non-head admin accounts */
 export async function listAdminAccounts() {
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from("admin_accounts")
     .select("id, name, email, phone, role, is_active, created_at, created_by")
@@ -114,6 +117,7 @@ export async function listAdminAccounts() {
 
 /** Create a new Gate Manager or Security account */
 export async function createAdminAccount({ name, email, phone, role, password, createdBy }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
   const allowed = ["gate_manager", "security"];
   if (!allowed.includes(role)) throw new Error("Invalid role.");
 
@@ -143,6 +147,7 @@ export async function createAdminAccount({ name, email, phone, role, password, c
 
 /** Toggle is_active for a sub-admin account */
 export async function setAdminAccountActive(id, isActive) {
+  if (!supabase) throw new Error("Supabase is not configured.");
   const { error } = await supabase
     .from("admin_accounts")
     .update({ is_active: isActive })
@@ -152,6 +157,7 @@ export async function setAdminAccountActive(id, isActive) {
 
 /** Hard delete a sub-admin account (head only) */
 export async function deleteAdminAccount(id) {
+  if (!supabase) throw new Error("Supabase is not configured.");
   const { error } = await supabase
     .from("admin_accounts")
     .delete()
@@ -162,6 +168,7 @@ export async function deleteAdminAccount(id) {
 
 /** Update password for an existing account */
 export async function resetAdminPassword(id, newPassword) {
+  if (!supabase) throw new Error("Supabase is not configured.");
   const { hash, salt } = await hashPassword(newPassword);
   const { error } = await supabase
     .from("admin_accounts")

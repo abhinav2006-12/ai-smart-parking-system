@@ -11,6 +11,7 @@ import OfflinePage from "./components/OfflinePage";
 
 import { logActivity } from "./lib/activityLog";
 import { supabase } from "./lib/supabase";
+import ParkPilotChatbot from "./components/ParkPilotChatbot";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 const GuestPanel = lazy(() => import("./components/GuestPanel"));
@@ -32,7 +33,7 @@ export default function App() {
 
   // Heartbeat to update last_active_at in the database for the active admin
   useEffect(() => {
-    if (!adminUser) return;
+    if (!adminUser || !supabase) return;
     const ping = async () => {
       try {
         await supabase
@@ -58,13 +59,15 @@ export default function App() {
   const handleAdminLogout = useCallback(async () => {
     if (adminUser) {
       await logActivity(adminUser, "Logged out");
-      try {
-        await supabase
-          .from("admin_accounts")
-          .update({ last_active_at: null })
-          .eq("id", adminUser.id);
-      } catch (e) {
-        console.error("Error clearing status:", e);
+      if (supabase) {
+        try {
+          await supabase
+            .from("admin_accounts")
+            .update({ last_active_at: null })
+            .eq("id", adminUser.id);
+        } catch (e) {
+          console.error("Error clearing status:", e);
+        }
       }
     }
     setAdminAuthed(false);
@@ -165,6 +168,8 @@ export default function App() {
     <>
       <AmbientBackground />
       <div className="app-content">{content}</div>
+      {/* Floating chatbot — available on every screen, hidden on /admin */}
+      {!isAdminRoute && <ParkPilotChatbot />}
     </>
   );
 }

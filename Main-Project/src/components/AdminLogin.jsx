@@ -36,6 +36,7 @@ export default function AdminLogin({
 
   useEffect(() => {
     const fetchActiveAdmins = async () => {
+      if (!supabase) return;
       try {
         // Fetch admins active within the last 2 minutes
         const twoMinsAgo = new Date(Date.now() - 120000).toISOString();
