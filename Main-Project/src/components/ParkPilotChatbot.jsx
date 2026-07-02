@@ -78,11 +78,11 @@ const SUGGESTIONS = [
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function BotIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="10" rx="2" />
-      <path d="M12 11V7" />
-      <circle cx="12" cy="5" r="2" />
-      <path d="M8 15h.01M12 15h.01M16 15h.01" strokeWidth="2.5" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <circle cx="9" cy="10" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="13" cy="10" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="17" cy="10" r="1.2" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -255,8 +255,8 @@ export default function ParkPilotChatbot() {
     bottom: 28,
     right: 28,
     zIndex: 9999,
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     borderRadius: "50%",
     background: "linear-gradient(135deg, var(--accent), var(--accent-hover))",
     color: "#fff",
@@ -265,8 +265,8 @@ export default function ParkPilotChatbot() {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.22)",
-    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+    boxShadow: "0 8px 30px rgba(var(--accent-rgb), 0.35)",
+    transition: "transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.25s ease",
   };
 
   const panelStyle = {
@@ -557,12 +557,12 @@ export default function ParkPilotChatbot() {
         onClick={open ? () => setOpen(false) : handleOpen}
         style={fabStyle}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "scale(1.08)";
-          e.currentTarget.style.boxShadow = "0 6px 24px rgba(0,0,0,0.28)";
+          e.currentTarget.style.transform = "scale(1.1) translateY(-2px)";
+          e.currentTarget.style.boxShadow = "0 12px 35px rgba(var(--accent-rgb), 0.55)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "scale(1)";
-          e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.22)";
+          e.currentTarget.style.transform = "scale(1) translateY(0)";
+          e.currentTarget.style.boxShadow = "0 8px 30px rgba(var(--accent-rgb), 0.35)";
         }}
         aria-label={open ? "Close assistant" : "Open ParkPilot Assistant"}
       >
