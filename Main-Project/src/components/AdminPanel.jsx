@@ -5,6 +5,7 @@ import SettingsTab from "./SettingsTab";
 import AdminAccountsTab from "./AdminAccountsTab";
 import ActivityLogTab from "./ActivityLogTab";
 import ThemeToggle from "./ThemeToggle";
+import ParkPilotChatbot from "./ParkPilotChatbot";
 
 export default function AdminPanel({ store, updateStore, onLogout, theme, onToggleTheme: toggleTheme, onRefresh, adminUser }) {
   const [tab, setTab] = useState("dashboard");
@@ -149,6 +150,7 @@ export default function AdminPanel({ store, updateStore, onLogout, theme, onTogg
           ParkPilot Admin &copy; {new Date().getFullYear()} &bull; Secure AI-Assisted Smart Parking Control
         </footer>
       </div>
+      <ParkPilotChatbot mode="admin" adminId={adminUser?.id} store={store} />
     </div>
   );
 }

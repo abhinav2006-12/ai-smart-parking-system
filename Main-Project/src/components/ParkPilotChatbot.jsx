@@ -75,6 +75,14 @@ const SUGGESTIONS = [
   "What vehicle types are supported?",
 ];
 
+const ADMIN_SUGGESTIONS = [
+  "What is today's revenue?",
+  "What is the current slot occupancy?",
+  "Show recent vehicle logs.",
+  "What are the parking rates?",
+];
+
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function BotIcon() {
   return (
@@ -102,9 +110,54 @@ function CloseIcon() {
 }
 
 // ─── Local offline FAQ matching responder ────────────────────────────────────
-function getLocalResponse(userMessage) {
+// ─── Local offline FAQ matching responder ────────────────────────────────────
+function getLocalResponse(userMessage, mode = "user", store = null) {
   const query = userMessage.toLowerCase().trim();
   
+  if (mode === "admin" && store) {
+    if (query.includes("revenue") || query.includes("money") || query.includes("earned") || query.includes("sales")) {
+      const now = new Date();
+      const revenueToday = (store.revenueLog || []).filter((r) => {
+        const d = new Date(r.date);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+      }).reduce((s, r) => s + r.amount, 0);
+      
+      const totalRevenue = (store.revenueLog || []).reduce((s, r) => s + r.amount, 0);
+      return `Offline Local Report:\n- **Today's Revenue**: ₹${Math.round(revenueToday).toLocaleString("en-IN")}\n- **All-time Revenue**: ₹${Math.round(totalRevenue).toLocaleString("en-IN")}\n\n(Values compiled from local cached database snapshot)`;
+    }
+    
+    if (query.includes("occupancy") || query.includes("slot") || query.includes("capacity") || query.includes("free") || query.includes("park")) {
+      const totalSlots = store.settings?.totalSlots || 0;
+      const occupied = (store.vehicles || []).filter((v) => v.status === "parked");
+      const free = Math.max(0, totalSlots - occupied.length);
+      
+      const counts = { standard: 0, ev: 0, taxi: 0 };
+      occupied.forEach((v) => {
+        counts[v.type] = (counts[v.type] || 0) + 1;
+      });
+      
+      const slotsByType = store.settings?.slotsByType || {};
+      
+      return `Offline Occupancy Report:\n- **Total Slots**: ${totalSlots}\n- **Currently Parked**: ${occupied.length}\n- **Free Slots**: ${free}\n\n**Occupancy by vehicle type**:\n- **Standard**: ${counts.standard} / ${slotsByType.standard || 0}\n- **EV**: ${counts.ev} / ${slotsByType.ev || 0}\n- **Taxi**: ${counts.taxi} / ${slotsByType.taxi || 0}\n\n(Values compiled from local cached database snapshot)`;
+    }
+    
+    if (query.includes("rate") || query.includes("price") || query.includes("fee") || query.includes("cost") || query.includes("pricing")) {
+      const rates = store.settings?.rates || {};
+      return `Offline Rates Configuration:\n- **Standard**: ₹${rates.standard || 0}/hour\n- **EV**: ₹${rates.ev || 0}/hour\n- **Taxi**: ₹${rates.taxi || 0}/hour\n\n(Values compiled from local settings)`;
+    }
+    
+    if (query.includes("vehicle") || query.includes("log") || query.includes("recent") || query.includes("list")) {
+      const recent = (store.vehicles || []).slice(0, 5);
+      if (recent.length === 0) return "No vehicles in local database.";
+      const lines = recent.map((v) => {
+        const entryStr = new Date(v.entryTime).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' });
+        const exitStr = v.exitTime ? `left at ${new Date(v.exitTime).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })}` : "parked";
+        return `- **${v.number}** (${v.type}): ${entryStr} (${exitStr})`;
+      }).join("\n");
+      return `Offline Recent Vehicles:\n${lines}\n\n(Last 5 records)`;
+    }
+  }
+
   if (query.includes("check in") || query.includes("check-in") || query.includes("checkin") || query.includes("enter") || query.includes("entry")) {
     return "To check in your vehicle:\n1. Select the **Check-In** button on the main screen.\n2. Choose your vehicle type (Standard, EV, or Disabled).\n3. Scan your number plate using the camera (or enter it manually if scanning fails).\n4. The system will save your record and assign you a slot.";
   }
@@ -145,7 +198,7 @@ function getLocalResponse(userMessage) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function ParkPilotChatbot() {
+export default function ParkPilotChatbot({ mode = "user", adminId = null, store = null }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]); // { role: "user"|"assistant", content: string }
   const [input, setInput] = useState("");
@@ -202,16 +255,24 @@ export default function ParkPilotChatbot() {
     abortRef.current = controller;
 
     try {
-      const res = await fetch("/api/chatbot", {
+      const endpoint = mode === "admin" ? "/api/admin-chatbot" : "/api/chatbot";
+      const requestBody = mode === "admin"
+        ? {
+            adminId,
+            messages: nextHistory.map((m) => ({ role: m.role, content: m.content })),
+          }
+        : {
+            model: "claude-sonnet-4-6",
+            max_tokens: 1000,
+            system: SYSTEM_PROMPT,
+            messages: nextHistory.map((m) => ({ role: m.role, content: m.content })),
+          };
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          messages: nextHistory.map((m) => ({ role: m.role, content: m.content })),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!res.ok) {
@@ -221,8 +282,8 @@ export default function ParkPilotChatbot() {
       const data = await res.json();
       
       if (data?.error?.type === "unconfigured") {
-        console.warn("[Chatbot] Server has no Anthropic API key. Using local FAQ fallback responder.");
-        const fallbackReply = getLocalResponse(trimmed);
+        console.warn("[Chatbot] Server has no Gemini API key. Using local FAQ fallback responder.");
+        const fallbackReply = getLocalResponse(trimmed, mode, store);
         setMessages((prev) => [...prev, { role: "assistant", content: fallbackReply }]);
       } else if (data?.error) {
         throw new Error(data.error.message || "Unknown proxy error.");
@@ -233,12 +294,12 @@ export default function ParkPilotChatbot() {
     } catch (err) {
       if (err.name === "AbortError") return;
       console.warn("[Chatbot] Using local fallback response. Error info:", err);
-      const fallbackReply = getLocalResponse(trimmed);
+      const fallbackReply = getLocalResponse(trimmed, mode, store);
       setMessages((prev) => [...prev, { role: "assistant", content: fallbackReply }]);
     } finally {
       setLoading(false);
     }
-  }, [messages, loading]);
+  }, [messages, loading, mode, adminId, store]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -314,10 +375,12 @@ export default function ParkPilotChatbot() {
             <BotIcon />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ color: "#fff", fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>ParkPilot Assistant</div>
+            <div style={{ color: "#fff", fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>
+              {mode === "admin" ? "Operations Copilot" : "ParkPilot Assistant"}
+            </div>
             <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 11.5, display: "flex", alignItems: "center", gap: 5 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
-              Online — here to help
+              {mode === "admin" ? "Ops Console Session" : "Online — here to help"}
             </div>
           </div>
           <button
@@ -363,8 +426,17 @@ export default function ParkPilotChatbot() {
                   <BotIcon />
                 </div>
                 <p style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.55, margin: 0 }}>
-                  Hi! I'm the ParkPilot Assistant 👋<br />
-                  Ask me anything about how to use the parking system — check-in, check-out, fees, payments, and more.
+                  {mode === "admin" ? (
+                    <>
+                      Hi! I'm the Operations Copilot 🛠️<br />
+                      I can help you review occupancy, calculate revenues, look at settings, or review recent activities.
+                    </>
+                  ) : (
+                    <>
+                      Hi! I'm the ParkPilot Assistant 👋<br />
+                      Ask me anything about how to use the parking system — check-in, check-out, fees, payments, and more.
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -374,7 +446,7 @@ export default function ParkPilotChatbot() {
                   Common questions
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {SUGGESTIONS.map((s) => (
+                  {(mode === "admin" ? ADMIN_SUGGESTIONS : SUGGESTIONS).map((s) => (
                     <button
                       key={s}
                       onClick={() => handleSuggestion(s)}
@@ -510,7 +582,7 @@ export default function ParkPilotChatbot() {
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me about ParkPilot…"
+              placeholder={mode === "admin" ? "Ask about operations, stats..." : "Ask me about ParkPilot…"}
               disabled={loading}
               style={{
                 flex: 1,
@@ -547,7 +619,7 @@ export default function ParkPilotChatbot() {
             </button>
           </form>
           <p style={{ fontSize: 10.5, color: "var(--muted)", textAlign: "center", marginTop: 8 }}>
-            ParkPilot Assistant · Powered by AI
+            {mode === "admin" ? "Operations Copilot · Secure Staff Session" : "ParkPilot Assistant · Powered by AI"}
           </p>
         </div>
       </div>

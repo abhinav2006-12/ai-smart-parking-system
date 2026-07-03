@@ -73,7 +73,19 @@ export async function seedHeadAdmin() {
  * @returns {{ id, name, email, phone, role }}
  */
 export async function loginAdminAccount(email, password) {
-  if (!supabase) throw new Error("Supabase is not configured. Please check your credentials in the environment configuration.");
+  if (!supabase) {
+    const cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail === HEAD_EMAIL && password === HEAD_PASS) {
+      return {
+        id: "offline-head-admin-id",
+        name: "Offline Head Admin",
+        email: HEAD_EMAIL,
+        phone: "1234567890",
+        role: "head",
+      };
+    }
+    throw new Error("Supabase is not configured. For offline testing, use: abhiinavpr@gmail.com / abhiinav@park");
+  }
   // Ensure head admin exists
   await seedHeadAdmin();
 
@@ -105,7 +117,20 @@ export async function loginAdminAccount(email, password) {
 
 /** List all non-head admin accounts */
 export async function listAdminAccounts() {
-  if (!supabase) return [];
+  if (!supabase) {
+    return [
+      {
+        id: "offline-head-admin-id",
+        name: "Offline Head Admin",
+        email: HEAD_EMAIL,
+        phone: "1234567890",
+        role: "head",
+        is_active: true,
+        created_at: new Date().toISOString(),
+        created_by: "system",
+      }
+    ];
+  }
   const { data, error } = await supabase
     .from("admin_accounts")
     .select("id, name, email, phone, role, is_active, created_at, created_by")
