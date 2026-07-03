@@ -14,9 +14,19 @@ export const aiService = {
     const systemPrompt = this.buildSystemPrompt(dbContext, adminUser);
 
     if (env.GEMINI_API_KEY) {
-      return this.callGemini(messages, systemPrompt);
+      try {
+        return await this.callGemini(messages, systemPrompt);
+      } catch (err) {
+        console.error("[AIService] Gemini API call failed. Falling back to local offline mode. Error:", err.message);
+        return this.generateLocalFallback(messages.at(-1)?.content || "", dbContext);
+      }
     } else if (env.OPENAI_API_KEY) {
-      return this.callOpenAI(messages, systemPrompt);
+      try {
+        return await this.callOpenAI(messages, systemPrompt);
+      } catch (err) {
+        console.error("[AIService] OpenAI API call failed. Falling back to local offline mode. Error:", err.message);
+        return this.generateLocalFallback(messages.at(-1)?.content || "", dbContext);
+      }
     } else {
       console.warn("[AIService] No API Key configured. Falling back to rule-based answers.");
       return this.generateLocalFallback(messages.at(-1)?.content || "", dbContext);

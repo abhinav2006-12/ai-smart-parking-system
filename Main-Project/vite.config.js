@@ -2,16 +2,21 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import anprHandler from './api/anpr.js'
 import chatbotHandler from './api/chatbot.js'
+import expressHandler from './api/express.js'
 
 function vercelApiPlugin() {
   return {
     name: 'vercel-api-plugin',
     configureServer(server) {
+      const env = loadEnv(server.config.mode, process.cwd(), '');
+      for (const key in env) {
+        process.env[key] = env[key];
+      }
+
       server.middlewares.use('/api/anpr', async (req, res, _next) => {
         console.log('[ANPR Middleware] Request received:', req.method, req.url);
-        const env = loadEnv(server.config.mode, process.cwd(), '');
         if (env.PLATERECOGNIZER_TOKEN) {
-          process.env.PLATERECOGNIZER_TOKEN = env.PLATERECOGNIZER_TOKEN;
+          process.env.PLATRECOGNIZER_TOKEN = env.PLATERECOGNIZER_TOKEN;
         } else {
           console.error('[ANPR Middleware] WARNING: PLATERECOGNIZER_TOKEN is missing in loadEnv!');
         }
@@ -39,7 +44,6 @@ function vercelApiPlugin() {
 
       server.middlewares.use('/api/chatbot', async (req, res, _next) => {
         console.log('[Chatbot Middleware] Request received:', req.method, req.url);
-        const env = loadEnv(server.config.mode, process.cwd(), '');
         if (env.GEMINI_API_KEY) {
           process.env.GEMINI_API_KEY = env.GEMINI_API_KEY;
         }
@@ -64,6 +68,14 @@ function vercelApiPlugin() {
           }
         }
       });
+
+      server.middlewares.use((req, res, next) => {
+        if (req.url.startsWith('/api/chat') || req.url.startsWith('/api/admin') || req.url.startsWith('/api/health')) {
+          expressHandler(req, res, next);
+        } else {
+          next();
+        }
+      });
     },
   };
 }
@@ -72,15 +84,6 @@ function vercelApiPlugin() {
 export default defineConfig({
   plugins: [react(), vercelApiPlugin()],
   server: {
-    proxy: {
-      '/api/chat': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-      },
-      '/api/admin': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-      },
-    },
+    // Express backend is mounted as middleware in vercelApiPlugin, no proxy needed
   },
 })
