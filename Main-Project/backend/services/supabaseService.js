@@ -263,5 +263,42 @@ export const supabaseService = {
 
     if (error) throw error;
     return logs || [];
+  },
+
+  /**
+   * Fetch total revenue earned today (since midnight local time).
+   */
+  async getTodaysRevenue() {
+    if (!supabase) throw new Error("Supabase client not initialized.");
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartMs = todayStart.getTime();
+
+    const { data: logs, error } = await supabase
+      .from("revenue_log")
+      .select("amount")
+      .gte("date", todayStartMs);
+
+    if (error) throw error;
+
+    return (logs || []).reduce((sum, r) => sum + Number(r.amount), 0);
+  },
+
+  /**
+   * Fetch recent activity logs involving failed/flagged ANPR or manual input.
+   */
+  async getRecentFailedOrFlaggedANPR() {
+    if (!supabase) throw new Error("Supabase client not initialized.");
+
+    const { data: logs, error } = await supabase
+      .from("admin_activity_log")
+      .select("*")
+      .or("action.ilike.%failed%,action.ilike.%anpr%,action.ilike.%manual%,action.ilike.%unusual%")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+    return logs || [];
   }
 };

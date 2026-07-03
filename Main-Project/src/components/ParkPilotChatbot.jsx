@@ -74,6 +74,12 @@ const SUGGESTIONS = [
   "What if my plate isn't detected?",
   "What vehicle types are supported?",
 ];
+const ADMIN_SUGGESTIONS = [
+  "How many slots are free?",
+  "Show today's check-ins",
+  "Weekly revenue stats",
+  "Show recent logs",
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function BotIcon() {
@@ -145,7 +151,7 @@ function getLocalResponse(userMessage) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function ParkPilotChatbot() {
+export default function ParkPilotChatbot({ mode = "user", adminUser }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]); // { role: "user"|"assistant", content: string }
   const [input, setInput] = useState("");
@@ -201,44 +207,66 @@ export default function ParkPilotChatbot() {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    try {
-      const res = await fetch("/api/chatbot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
+    const isAdmin = mode === "admin";
+    const endpoint = isAdmin ? "/api/chat" : "/api/chatbot";
+    const token = isAdmin ? localStorage.getItem("parkpilot_admin_token") : null;
+
+    const headers = { "Content-Type": "application/json" };
+    if (isAdmin && token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const payload = isAdmin
+      ? { messages: nextHistory.map((m) => ({ role: m.role, content: m.content })) }
+      : {
           model: "claude-sonnet-4-6",
           max_tokens: 1000,
           system: SYSTEM_PROMPT,
           messages: nextHistory.map((m) => ({ role: m.role, content: m.content })),
-        }),
+        };
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        throw new Error(`Request failed (${res.status})`);
+        if (res.status === 429) {
+          throw new Error("You are sending too many requests. Please slow down.");
+        }
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Request failed (${res.status})`);
       }
 
       const data = await res.json();
       
-      if (data?.error?.type === "unconfigured") {
+      if (!isAdmin && data?.error?.type === "unconfigured") {
         console.warn("[Chatbot] Server has no Anthropic API key. Using local FAQ fallback responder.");
         const fallbackReply = getLocalResponse(trimmed);
         setMessages((prev) => [...prev, { role: "assistant", content: fallbackReply }]);
       } else if (data?.error) {
-        throw new Error(data.error.message || "Unknown proxy error.");
+        throw new Error(data.error.message || data.error || "Unknown proxy error.");
       } else {
-        const reply = data.content?.find((b) => b.type === "text")?.text || "Sorry, I couldn't generate a response.";
+        const reply = data.content?.find((b) => b.type === "text")?.text || data.reply || "Sorry, I couldn't generate a response.";
         setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
       }
     } catch (err) {
       if (err.name === "AbortError") return;
-      console.warn("[Chatbot] Using local fallback response. Error info:", err);
-      const fallbackReply = getLocalResponse(trimmed);
-      setMessages((prev) => [...prev, { role: "assistant", content: fallbackReply }]);
+      console.warn("[Chatbot] Request failed. Error info:", err);
+      if (isAdmin) {
+        setError(err.message || "Network error. Failed to reach assistant.");
+        setMessages((prev) => [...prev, { role: "assistant", content: `⚠️ **Error**: ${err.message || "Failed to communicate with the server."}` }]);
+      } else {
+        const fallbackReply = getLocalResponse(trimmed);
+        setMessages((prev) => [...prev, { role: "assistant", content: fallbackReply }]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [messages, loading]);
+  }, [messages, loading, mode]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -314,10 +342,12 @@ export default function ParkPilotChatbot() {
             <BotIcon />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ color: "#fff", fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>ParkPilot Assistant</div>
+            <div style={{ color: "#fff", fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>
+              {mode === "admin" ? "ParkPilot AI Copilot" : "ParkPilot Assistant"}
+            </div>
             <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 11.5, display: "flex", alignItems: "center", gap: 5 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
-              Online — here to help
+              {mode === "admin" ? "Active Database Agent" : "Online — here to help"}
             </div>
           </div>
           <button
@@ -363,8 +393,17 @@ export default function ParkPilotChatbot() {
                   <BotIcon />
                 </div>
                 <p style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.55, margin: 0 }}>
-                  Hi! I'm the ParkPilot Assistant 👋<br />
-                  Ask me anything about how to use the parking system — check-in, check-out, fees, payments, and more.
+                  {mode === "admin" ? (
+                    <>
+                      Welcome, <strong>{adminUser?.name || "Admin"}</strong>! 👋<br />
+                      I am your real-time administrative database assistant. Ask me questions about slot counts, bookings, weekly revenue, active admins, EV slot metrics, or locate a parked vehicle.
+                    </>
+                  ) : (
+                    <>
+                      Hi! I'm the ParkPilot Assistant 👋<br />
+                      Ask me anything about how to use the parking system — check-in, check-out, fees, payments, and more.
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -374,7 +413,7 @@ export default function ParkPilotChatbot() {
                   Common questions
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {SUGGESTIONS.map((s) => (
+                  {(mode === "admin" ? ADMIN_SUGGESTIONS : SUGGESTIONS).map((s) => (
                     <button
                       key={s}
                       onClick={() => handleSuggestion(s)}
@@ -510,7 +549,7 @@ export default function ParkPilotChatbot() {
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me about ParkPilot…"
+              placeholder={mode === "admin" ? "Query system database…" : "Ask me about ParkPilot…"}
               disabled={loading}
               style={{
                 flex: 1,
@@ -547,7 +586,7 @@ export default function ParkPilotChatbot() {
             </button>
           </form>
           <p style={{ fontSize: 10.5, color: "var(--muted)", textAlign: "center", marginTop: 8 }}>
-            ParkPilot Assistant · Powered by AI
+            {mode === "admin" ? "ParkPilot Admin Copilot · Powered by AI" : "ParkPilot Assistant · Powered by AI"}
           </p>
         </div>
       </div>
@@ -564,7 +603,7 @@ export default function ParkPilotChatbot() {
           e.currentTarget.style.transform = "scale(1) translateY(0)";
           e.currentTarget.style.boxShadow = "0 8px 30px rgba(var(--accent-rgb), 0.35)";
         }}
-        aria-label={open ? "Close assistant" : "Open ParkPilot Assistant"}
+        aria-label={open ? (mode === "admin" ? "Close admin copilot" : "Close assistant") : (mode === "admin" ? "Open ParkPilot Admin Copilot" : "Open ParkPilot Assistant")}
       >
         {open ? <CloseIcon /> : <BotIcon />}
 

@@ -37,8 +37,8 @@ export const aiService = {
    * Build structural system instruction with DB context injected
    */
   buildSystemPrompt(dbContext, adminUser) {
-    return `You are ParkPilot AI Assistant, a professional parking operations manager.
-You help parking lot administrators, attendants, and managers query the system state using natural language.
+    return `You are the ParkPilot Admin Copilot, an internal operations assistant for authenticated staff.
+You help parking lot administrators, attendants, and managers query, analyze, and explain the system state using natural language.
 
 Your active user:
 - Name: ${adminUser.name}
@@ -49,13 +49,11 @@ REAL-TIME SYSTEM STATE (SUPABASE SNAPSHOT):
 ${JSON.stringify(dbContext, null, 2)}
 
 INSTRUCTIONS & RULES:
-1. Always base stats, numbers, names, and counts directly on the REAL-TIME SYSTEM STATE above.
-2. If the snapshot data is null or empty, state that no active records were found.
-3. NEVER fabricate revenue, slots, or vehicle info. If data is not available, state so.
+1. Ground all answers strictly in the REAL-TIME SYSTEM STATE provided. Base numeric answers (occupancy stats, today's revenue, logs, and fee calculations) ONLY on the data given — never guess, fabricate, or hallucinate figures. If data is not present in the snapshot, state that it is unavailable.
+2. Assume the user is authenticated staff. You can discuss occupancy, revenue breakdown, fee calculations, and recent flagged/failed ANPR entries.
+3. SCOPE CONSTRAINT: You are read-only. You must NOT trigger or simulate write actions (e.g. deleting users, modifying fees, marking vehicle checkouts). If the user asks you to "do" something rather than "explain" or "analyze" (e.g., "delete this vehicle log" or "change the standard rate to 50"), you must state directly that you cannot execute write/administrative operations and instruct them to use the dashboard controls manually.
 4. Format lists or reports using markdown tables, bullet points, and bold text for readability.
-5. In vehicle lists, include columns: Vehicle Plate, Slot Type, Entry Time, Status, Fee.
-6. When explaining settings, refer to the hourly rates: Standard = Standard slots hourly fee, EV = EV slots hourly fee, etc.
-7. Keep responses helpful, concise, and business-focused. Encourage proactive parking management.`;
+5. Keep responses helpful, concise, and focused on active parking management operations.`;
   },
 
   /**
@@ -145,7 +143,6 @@ INSTRUCTIONS & RULES:
    * Fallback engine if no API keys are present (runs entirely offline/locally)
    */
   generateLocalFallback(text, dbContext) {
-    const q = text.toLowerCase();
     let reply = `### [Offline Local Mode] ParkPilot Assistant\n\n*Note: No LLM API Key is configured in environment variables. Running in structured local fallback mode.*\n\n`;
 
     if (dbContext.slots) {
@@ -258,5 +255,75 @@ INSTRUCTIONS & RULES:
     reply += `- **Cancelled entries** ("Show cancelled slots")\n\n`;
     reply += `Please ask one of these questions or configure your Gemini/OpenAI API key to enable full conversational AI reasoning.`;
     return reply;
+  },
+
+  /**
+   * Explains why a vehicle record is normal or an outlier based on list-wide stats context.
+   */
+  async generateSummary(vehicle, stats) {
+    const prompt = `You are ParkPilot AI Outlier Explainer.
+Your job is to explain in 1 or 2 short sentences why a specific vehicle's parking record is unusual (an outlier) or normal compared to list-wide statistics.
+
+VEHICLE RECORD:
+${JSON.stringify(vehicle, null, 2)}
+
+LIST-WIDE STATS CONTEXT:
+${JSON.stringify(stats, null, 2)}
+
+INSTRUCTIONS:
+1. Base your explanation strictly on the provided vehicle record and stats. Do not fabricate names, locations, or dates.
+2. If the vehicle is unusual (i.e. has outlier flags or rare types), write a 1-2 sentence explanation of why. e.g. "This vehicle stayed parked for 9.5 hours, over 3x the average of 2.8 hours today."
+3. If the vehicle is normal, output: "Duration and fee are within the typical range for today."
+4. Keep the output plain text, under 40 words, and exactly 1-2 sentences. Do not include markdown formatting or quotes around the output.`;
+
+    if (env.GEMINI_API_KEY) {
+      try {
+        return await this.callGemini([{ role: "user", content: "Analyze and explain this vehicle's statistics." }], prompt);
+      } catch (err) {
+        console.error("[AIService] Gemini summary generation failed, using local fallback. Error:", err.message);
+        return this.generateLocalSummaryFallback(vehicle, stats);
+      }
+    } else if (env.OPENAI_API_KEY) {
+      try {
+        return await this.callOpenAI([{ role: "user", content: "Analyze and explain this vehicle's statistics." }], prompt);
+      } catch (err) {
+        console.error("[AIService] OpenAI summary generation failed, using local fallback. Error:", err.message);
+        return this.generateLocalSummaryFallback(vehicle, stats);
+      }
+    } else {
+      return this.generateLocalSummaryFallback(vehicle, stats);
+    }
+  },
+
+  /**
+   * Deterministic local summary generation as offline fallback.
+   */
+  generateLocalSummaryFallback(vehicle, stats) {
+    const reasons = stats?.vehicleOutlierReasons?.[vehicle.id] || [];
+    if (reasons.length === 0) {
+      return "Duration and fee are within the typical range for today.";
+    }
+
+    const explanations = [];
+    if (reasons.includes("duration")) {
+      const avgStr = stats?.duration?.mean ? ` (average today is ${Math.round(stats.duration.mean)} mins)` : "";
+      explanations.push(`The parking duration of ${vehicle.durationMins || 0} minutes is significantly higher than typical${avgStr}.`);
+    }
+    if (reasons.includes("fee")) {
+      const avgStr = stats?.fee?.mean ? ` (average today is ₹${Math.round(stats.fee.mean)})` : "";
+      explanations.push(`The fee charged is ₹${vehicle.fee || 0}, which is outside the normal range${avgStr}.`);
+    }
+    if (reasons.includes("entryHour")) {
+      const hour = new Date(vehicle.entryTime).getHours();
+      explanations.push(`The entry time at ${hour}:00 is a rare check-in hour for this facility.`);
+    }
+    if (reasons.includes("rareType")) {
+      explanations.push(`The vehicle type "${vehicle.type}" is uncommon in today's records.`);
+    }
+
+    if (explanations.length > 0) {
+      return explanations.join(" ");
+    }
+    return "This vehicle's records show minor statistical deviations from the daily typical range.";
   }
 };

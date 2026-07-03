@@ -24,7 +24,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error("[Express App Error]:", err.stack);
   res.status(err.status || 500).json({
     error: err.message || "Internal server error occurred."
