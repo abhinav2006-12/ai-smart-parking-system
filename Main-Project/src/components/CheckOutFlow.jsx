@@ -8,13 +8,6 @@ const normalizeForMatching = (str) => {
   return str.toUpperCase().replace(/[^A-Z0-9]/g, "");
 };
 
-const isPeakHour = (timestamp, peakSettings) => {
-  if (!peakSettings || !peakSettings.enabled) return false;
-  const date = new Date(timestamp);
-  const currentStr = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-  return currentStr >= peakSettings.start && currentStr <= peakSettings.end;
-};
-
 export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [plateNumber, setPlateNumber] = useState("");
   const [photo, setPhoto] = useState(null);
@@ -24,6 +17,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
   const [paid, setPaid] = useState(false);
   const [qrUrl, setQrUrl] = useState(null);
   const [isManual, setIsManual] = useState(false);
+  const [captureMode, setCaptureMode] = useState("live");
 
   // Bumped every time we want a genuinely fresh camera session
   const [captureSessionId, setCaptureSessionId] = useState(0);
@@ -84,21 +78,14 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
       const mins = durationMinutes(found.entryTime, now);
       const rate = store.settings.rates[found.type] || store.settings.rates.standard;
       const hours = Math.max(rate.minHours, Math.ceil(mins / 60));
-      
-      const peakSettings = store.settings.rates?.peakHours || { enabled: false, start: "17:00", end: "21:00", multiplier: 1.5 };
-      const isPeak = isPeakHour(now, peakSettings);
-      const baseHourly = rate.hourly;
-      const hourlyRate = isPeak ? baseHourly * (peakSettings.multiplier || 1) : baseHourly;
-      const fee = hours * hourlyRate;
+      const fee = hours * rate.hourly;
       
       setMatched({
         ...found,
         exitTimePreview: now,
         durationMinsPreview: mins,
         hoursBilled: hours,
-        feePreview: fee,
-        isPeakHourActive: isPeak,
-        peakMultiplierApplied: peakSettings.multiplier || 1.5
+        feePreview: fee
       });
     } else {
       setMatched(null);
@@ -187,7 +174,6 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         <div style={{ fontSize: 28, fontWeight: 700, marginTop: 16, color: "var(--success)" }}>{fmtMoney(matched.feePreview)}</div>
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
           Duration: {formatDuration(matched.durationMinsPreview)} · billed {matched.hoursBilled} hr
-          {matched.isPeakHourActive && ` (Peak multiplier ×${matched.peakMultiplierApplied} applied)`}
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
           <button
@@ -345,6 +331,10 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         <PlateCapture
           key={captureSessionId}
           label="Vehicle Photo"
+          onModeChange={(m) => {
+            setCaptureMode(m);
+            if (m === "live") setIsManual(false);
+          }}
           onDetected={(text, photoData) => {
             if (isManual && !photoData) {
               return;
@@ -371,31 +361,31 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         />
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <label>Vehicle Number (confirm / edit)</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            className="mono"
-            value={plateNumber}
-            onFocus={() => setIsManual(true)}
-            onChange={(e) => {
-              setIsManual(true);
-              setPlateNumber(e.target.value.toUpperCase());
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                tryMatch(plateNumber);
-              }
-            }}
-            placeholder="KL07AB1234"
-            style={{ fontWeight: 600, letterSpacing: "0.02em" }}
-          />
-          <button type="button" onClick={() => tryMatch(plateNumber)} className="btn btn-secondary" style={{ flexShrink: 0 }}>
-            Find
-          </button>
+      {captureMode === "manual" && (
+        <div style={{ marginTop: 16 }}>
+          <label>Vehicle Number (confirm / edit)</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              className="mono"
+              value={plateNumber}
+              onFocus={() => setIsManual(true)}
+              onChange={(e) => {
+                setIsManual(true);
+                setPlateNumber(e.target.value.toUpperCase());
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") tryMatch(plateNumber);
+              }}
+              placeholder="KL07AB1234"
+              style={{ fontWeight: 600, letterSpacing: "0.02em" }}
+            />
+            <button type="button" onClick={() => tryMatch(plateNumber)} className="btn btn-secondary" style={{ flexShrink: 0 }}>
+              Find
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {matched && (
         <div className="fade-up" style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 18 }}>
@@ -414,15 +404,9 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, marginTop: 8 }}>
             <span style={{ color: "var(--muted)" }}>Rate ({matched.type})</span>
             <span style={{ fontWeight: 600 }}>
-              {fmtMoney((store.settings.rates[matched.type] || store.settings.rates.standard).hourly)}/hr
-              {matched.isPeakHourActive && ` (Peak ×${matched.peakMultiplierApplied})`} · billed {matched.hoursBilled} hr
+              {fmtMoney((store.settings.rates[matched.type] || store.settings.rates.standard).hourly)}/hr · billed {matched.hoursBilled} hr
             </span>
           </div>
-          {matched.isPeakHourActive && (
-            <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 12, color: "var(--warning)", fontWeight: 500, marginTop: 4 }}>
-              ⚠ Peak hour pricing active
-            </div>
-          )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Total Fee</span>
             <span style={{ fontWeight: 700, fontSize: 22, color: "var(--success)" }}>{fmtMoney(matched.feePreview)}</span>

@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { fmtMoney, isSameDay } from "../lib/format";
 
-const ACCENT = "#2F4858";
+
 
 export default function DashboardTab({ store, onRefresh }) {
   const [selectedSlotType, setSelectedSlotType] = useState(null);

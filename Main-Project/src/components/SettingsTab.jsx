@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { wipeAllData } from "../lib/supabase";
+import { logActivity } from "../lib/activityLog";
 
 const TYPES = ["standard", "ev", "taxi"];
 
-export default function SettingsTab({ store, updateStore, onLogout }) {
+export default function SettingsTab({ store, updateStore, onLogout, adminUser }) {
   const [local, setLocal] = useState(() => JSON.parse(JSON.stringify(store.settings)));
   const [saved, setSaved] = useState(false);
   const [wiping, setWiping] = useState(false);
@@ -18,28 +19,16 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
   const setRate = (type, field, val) =>
     setLocal((prev) => ({ ...prev, rates: { ...prev.rates, [type]: { ...prev.rates[type], [field]: Math.max(0, Number(val) || 0) } } }));
 
-  const setPeakHourSetting = (field, val) => {
-    setLocal((prev) => {
-      const currentRates = prev.rates || {};
-      const currentPeak = currentRates.peakHours || { start: "17:00", end: "21:00", multiplier: 1.5, enabled: true };
-      return {
-        ...prev,
-        rates: {
-          ...currentRates,
-          peakHours: {
-            ...currentPeak,
-            [field]: field === "enabled" ? val : (field === "multiplier" ? (Math.max(1, Number(val) || 1)) : val)
-          }
-        }
-      };
-    });
-  };
 
   const totalFromSlots = local.slotsByType.standard + local.slotsByType.ev + local.slotsByType.taxi;
 
   const save = () => {
     const next = { ...local, totalSlots: totalFromSlots };
     updateStore((prev) => ({ ...prev, settings: next }));
+    logActivity(adminUser, "Updated settings", {
+      slots: `${next.slotsByType.standard} standard, ${next.slotsByType.ev} ev, ${next.slotsByType.taxi} taxi`,
+      rates: `standard: ₹${next.rates?.standard?.hourly}/hr, ev: ₹${next.rates?.ev?.hourly}/hr, taxi: ₹${next.rates?.taxi?.hourly}/hr`
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -72,6 +61,7 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
       await wipeAllData();
       // Then clear the local React store + localStorage
       updateStore((prev) => ({ ...prev, vehicles: [], revenueLog: [] }));
+      await logActivity(adminUser, "Wiped database logs");
       alert("Database wiped successfully! All vehicle and revenue logs have been deleted.");
     } catch (err) {
       console.error("Wipe failed:", err);
@@ -132,96 +122,46 @@ export default function SettingsTab({ store, updateStore, onLogout }) {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Card 3: UPI Payment Details */}
-          <div className="card" style={{ padding: "24px", boxShadow: "var(--shadow-sm)" }}>
-            <h3 className="display" style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
-              UPI Payment Details
-            </h3>
-            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>Used to generate the QR code shown to guests at check-out.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div>
-                <label>UPI ID (VPA)</label>
-                <input type="text" className="mono" value={local.upiVpa} onChange={(e) => setLocal((prev) => ({ ...prev, upiVpa: e.target.value }))} placeholder="yourname@upi" />
-              </div>
-              <div>
-                <label>Payee Name</label>
-                <input type="text" value={local.upiPayeeName} onChange={(e) => setLocal((prev) => ({ ...prev, upiPayeeName: e.target.value }))} />
-              </div>
-            </div>
-          </div>
-
-          {/* Card 5: Peak Hour Settings */}
-          <div className="card" style={{ padding: "24px", boxShadow: "var(--shadow-sm)" }}>
-            <h3 className="display" style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
-              Peak Hour Pricing
-            </h3>
-            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-              Apply a rate multiplier during busy hours of the day.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <input
-                  type="checkbox"
-                  id="peak-hours-enabled"
-                  checked={local.rates?.peakHours?.enabled ?? true}
-                  onChange={(e) => setPeakHourSetting("enabled", e.target.checked)}
-                  style={{ width: "auto", margin: 0 }}
-                />
-                <label htmlFor="peak-hours-enabled" style={{ marginBottom: 0, fontWeight: 600, cursor: "pointer" }}>
-                  Enable Peak Hour Multiplier
-                </label>
-              </div>
+          {adminUser?.role === "head" && (
+            <div className="card" style={{ padding: "24px", boxShadow: "var(--shadow-sm)" }}>
+              <h3 className="display" style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+                UPI Payment Details
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>Used to generate the QR code shown to guests at check-out.</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
-                  <label>Start Time</label>
-                  <input
-                    type="time"
-                    value={local.rates?.peakHours?.start ?? "17:00"}
-                    onChange={(e) => setPeakHourSetting("start", e.target.value)}
-                    disabled={!(local.rates?.peakHours?.enabled ?? true)}
-                  />
+                  <label>UPI ID (VPA)</label>
+                  <input type="text" className="mono" value={local.upiVpa} onChange={(e) => setLocal((prev) => ({ ...prev, upiVpa: e.target.value }))} placeholder="yourname@upi" />
                 </div>
                 <div>
-                  <label>End Time</label>
-                  <input
-                    type="time"
-                    value={local.rates?.peakHours?.end ?? "21:00"}
-                    onChange={(e) => setPeakHourSetting("end", e.target.value)}
-                    disabled={!(local.rates?.peakHours?.enabled ?? true)}
-                  />
+                  <label>Payee Name</label>
+                  <input type="text" value={local.upiPayeeName} onChange={(e) => setLocal((prev) => ({ ...prev, upiPayeeName: e.target.value }))} />
                 </div>
               </div>
-              <div>
-                <label>Peak Multiplier (e.g. 1.5 for 150%)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="1"
-                  value={local.rates?.peakHours?.multiplier ?? 1.5}
-                  onChange={(e) => setPeakHourSetting("multiplier", e.target.value)}
-                  disabled={!(local.rates?.peakHours?.enabled ?? true)}
-                />
-              </div>
             </div>
-          </div>
+          )}
+
 
           {/* Card 4: Danger Zone (Wipe Data) */}
-          <div className="card" style={{ padding: "24px", boxShadow: "var(--shadow-sm)", border: "1px solid var(--danger-soft)" }}>
-            <h3 className="display" style={{ fontSize: 16, fontWeight: 600, color: "var(--danger)", marginBottom: 4 }}>
-              Danger Zone
-            </h3>
-            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-              Permanently delete all vehicle transaction logs and revenue records from the database.
-            </p>
-            <button onClick={handleWipeData} disabled={wiping} className="btn btn-danger" style={{ width: "100%", justifyContent: "center" }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginRight: 6 }}>
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-              {wiping ? "Wiping…" : "Wipe Database Data"}
-            </button>
-          </div>
+          {adminUser?.role === "head" && (
+            <div className="card" style={{ padding: "24px", boxShadow: "var(--shadow-sm)", border: "1px solid var(--danger-soft)" }}>
+              <h3 className="display" style={{ fontSize: 16, fontWeight: 600, color: "var(--danger)", marginBottom: 4 }}>
+                Danger Zone
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
+                Permanently delete all vehicle transaction logs and revenue records from the database.
+              </p>
+              <button onClick={handleWipeData} disabled={wiping} className="btn btn-danger" style={{ width: "100%", justifyContent: "center" }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginRight: 6 }}>
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+                {wiping ? "Wiping…" : "Wipe Database Data"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

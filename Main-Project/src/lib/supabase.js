@@ -7,7 +7,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("Supabase credentials missing! Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.");
 }
 
-export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
+export const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 /**
  * Loads settings, vehicles, and revenueLog tables from Supabase, mapping them to the camelCase local store structure.
@@ -121,6 +123,11 @@ export async function syncStoreToSupabase(newStore, oldStore) {
     if (error) throw error;
   }
 
+  const formatTime = (val) => {
+    if (!val) return null;
+    return new Date(val).toISOString();
+  };
+
   // 2. Sync Vehicles
   const oldVehiclesMap = new Map(oldStore.vehicles.map((v) => [v.id, v]));
   const vehiclesToUpsert = [];
@@ -132,8 +139,8 @@ export async function syncStoreToSupabase(newStore, oldStore) {
         id: v.id,
         number: v.number,
         type: v.type,
-        entry_time: v.entryTime,
-        exit_time: v.exitTime,
+        entry_time: formatTime(v.entryTime),
+        exit_time: formatTime(v.exitTime),
         status: v.status,
         fee: v.fee,
         duration_mins: v.durationMins,
@@ -167,7 +174,7 @@ export async function syncStoreToSupabase(newStore, oldStore) {
         id: r.id,
         vehicle_id: r.vehicleId,
         amount: r.amount,
-        date: r.date,
+        date: formatTime(r.date),
       });
     }
   }
@@ -233,6 +240,9 @@ function genToken() {
  * Returns { ok: false, since } if another active session is running.
  */
 export async function claimAdminSession(existingToken) {
+  if (!supabase) {
+    return { ok: true, token: null };
+  }
   // Read current session state
   const { data, error } = await supabase
     .from("settings")
@@ -281,7 +291,7 @@ export async function claimAdminSession(existingToken) {
  * Should be called every ~5 minutes. Pass the token from claimAdminSession.
  */
 export async function refreshAdminSession(token) {
-  if (!token) return;
+  if (!token || !supabase) return;
   await supabase
     .from("settings")
     .update({ session_at: Date.now() })
@@ -293,7 +303,7 @@ export async function refreshAdminSession(token) {
  * Clears the admin session token so other devices can log in.
  */
 export async function releaseAdminSession(token) {
-  if (!token) return;
+  if (!token || !supabase) return;
   await supabase
     .from("settings")
     .update({ session_token: null, session_at: null })
@@ -305,6 +315,7 @@ export async function releaseAdminSession(token) {
  * Checks if the admin session is currently occupied by any active device.
  */
 export async function isSessionOccupied() {
+  if (!supabase) return false;
   const { data, error } = await supabase
     .from("settings")
     .select("session_token, session_at")
@@ -324,6 +335,7 @@ export async function isSessionOccupied() {
  * Forcefully clears the admin session, ignoring who owns it.
  */
 export async function forceResetAdminSession() {
+  if (!supabase) return;
   await supabase
     .from("settings")
     .update({ session_token: null, session_at: null })

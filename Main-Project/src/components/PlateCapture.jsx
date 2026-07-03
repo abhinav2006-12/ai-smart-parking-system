@@ -3,7 +3,7 @@ import { normalizeIndianPlate } from "../lib/plate";
 import { recognizePlate } from "../lib/anpr";
 import LiveCameraCapture from "./LiveCameraCapture";
 
-export default function PlateCapture({ onDetected, label }) {
+export default function PlateCapture({ onDetected, label, onModeChange }) {
   const [mode, setMode] = useState("live"); // live | manual
   const [photo, setPhoto] = useState(null); // dataURL
   const [status, setStatus] = useState("idle"); // idle | processing | done | error
@@ -62,11 +62,9 @@ export default function PlateCapture({ onDetected, label }) {
         <ModeToggle
           mode={mode}
           onChange={(next) => {
-            // Switching modes mid-capture should reset whatever the previous
-            // mode had in progress, so a half-finished live scan doesn't
-            // bleed into a stale manual-mode photo, or vice versa.
             setMode(next);
             retake();
+            if (onModeChange) onModeChange(next);
           }}
         />
       </div>

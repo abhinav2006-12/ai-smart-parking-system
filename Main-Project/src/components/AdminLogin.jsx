@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import ThemeToggle from "./ThemeToggle";
+import { loginAdminAccount } from "../lib/adminAuth";
+import { logActivity } from "../lib/activityLog";
+import { supabase } from "../lib/supabase";
 
 export default function AdminLogin({
   theme,
   onToggleTheme: toggleTheme,
   onSuccess,
   onBack,
-  sessionKicked,
-  sessionBlocked,
-  onSessionBlockedCheck,
-  onSessionReset,
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,6 +32,34 @@ export default function AdminLogin({
     return () => clearInterval(timer);
   }, [lockoutSecs]);
 
+  const [activeAdmins, setActiveAdmins] = useState([]);
+
+  useEffect(() => {
+    const fetchActiveAdmins = async () => {
+      if (!supabase) return;
+      try {
+        // Fetch admins active within the last 2 minutes
+        const twoMinsAgo = new Date(Date.now() - 120000).toISOString();
+        const { data, error } = await supabase
+          .from("admin_accounts")
+          .select("name, role, last_active_at")
+          .gt("last_active_at", twoMinsAgo)
+          .eq("is_active", true);
+
+        if (!error && data) {
+          // Sort by role/name
+          setActiveAdmins(data);
+        }
+      } catch (err) {
+        console.error("Error fetching active admins:", err);
+      }
+    };
+
+    fetchActiveAdmins();
+    const interval = setInterval(fetchActiveAdmins, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (lockoutSecs > 0) {
@@ -48,24 +75,15 @@ export default function AdminLogin({
     setLoading(true);
     setErr("");
 
-    // Simulate authenticating for a high-end feel
+    // Authenticate using multi-admin database auth
     setTimeout(async () => {
-      if (email.toLowerCase().trim() === "parkpilot@gmail.com" && password === "parkpilot2025") {
-        // Check/claim cross-device session before granting access
-        if (onSessionBlockedCheck) {
-          const result = await onSessionBlockedCheck();
-          if (!result) {
-            setLoading(false);
-            return; // sessionBlocked state already set in App.jsx
-          }
-          setSuccess(true);
-          setTimeout(() => onSuccess(result.token), 800);
-        } else {
-          setSuccess(true);
-          setTimeout(() => onSuccess(null), 800);
-        }
+      try {
+        const user = await loginAdminAccount(email, password);
+        await logActivity(user, "Logged in");
+        setSuccess(true);
+        setTimeout(() => onSuccess(user), 800);
         setAttempts(0);
-      } else {
+      } catch (err) {
         const nextAttempts = attempts + 1;
         if (nextAttempts >= 5) {
           setLockoutSecs(30);
@@ -73,7 +91,7 @@ export default function AdminLogin({
           setErr("Too many failed login attempts. Locked out for 30 seconds.");
         } else {
           setAttempts(nextAttempts);
-          setErr(`Invalid administrator credentials. Attempt ${nextAttempts} of 5.`);
+          setErr(err.message || `Invalid administrator credentials. Attempt ${nextAttempts} of 5.`);
         }
         setLoading(false);
       }
@@ -124,170 +142,43 @@ export default function AdminLogin({
           justifyContent: "center",
           padding: 24,
           position: "relative",
+          background: theme === "dark" 
+            ? "radial-gradient(circle at top right, rgba(99,102,241,0.08) 0%, transparent 60%)" 
+            : "radial-gradient(circle at top right, rgba(99,102,241,0.05) 0%, transparent 60%)",
         }}
       >
-
-      {/* Full-screen Glassmorphic Session Kicked Overlay */}
-      {sessionKicked && (
-        <div
-          className="fade-up"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: theme === "dark" ? "rgba(10, 12, 16, 0.65)" : "rgba(255, 255, 255, 0.45)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 10000,
-            padding: 24,
-          }}
-        >
-          <div
-            className="card animate-scale-up"
+        <div style={{
+          display: "flex",
+          gap: 24,
+          flexWrap: "wrap",
+          justifyContent: "center",
+          alignItems: "stretch",
+          maxWidth: 900,
+          width: "100%",
+        }}>
+          <form
+            onSubmit={handleSubmit}
+            className="card fade-up"
             style={{
               width: "100%",
-              maxWidth: 400,
-              padding: "36px 30px",
-              textAlign: "center",
-              background: theme === "dark" ? "rgba(23, 27, 33, 0.85)" : "rgba(255, 255, 255, 0.85)",
-              border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.08)",
-              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.15)",
+              maxWidth: 390,
+              padding: "36px 32px",
+              boxShadow: theme === "dark" 
+                ? "0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)" 
+                : "0 20px 50px rgba(16, 24, 32, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.01)",
+              background: theme === "dark" 
+                ? "rgba(17, 24, 39, 0.55)" 
+                : "rgba(255, 255, 255, 0.45)",
+              backdropFilter: "blur(30px)",
+              WebkitBackdropFilter: "blur(30px)",
+              border: theme === "dark"
+                ? "1px solid rgba(255, 255, 255, 0.08)"
+                : "1px solid rgba(0, 0, 0, 0.08)",
               borderRadius: 20,
+              position: "relative",
+              overflow: "hidden",
             }}
           >
-            {/* Visual Indicator (Exclamation Badge) */}
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                background: "rgba(124, 58, 237, 0.15)",
-                color: "#7C3AED",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 20px",
-                border: "1px solid rgba(124, 58, 237, 0.3)",
-              }}
-            >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </div>
-
-            <h3 className="display" style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>
-              Another User Logged In
-            </h3>
-            <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 8, marginBottom: 24, lineHeight: "1.5" }}>
-              Your administrator session was disconnected because another device has claimed the login.
-            </p>
-
-            <button
-              type="button"
-              onClick={onBack}
-              className="btn btn-primary"
-              style={{
-                width: "100%",
-                height: 44,
-                borderRadius: 10,
-                background: "var(--accent)",
-                color: "#fff",
-                fontWeight: 600,
-                fontSize: 14,
-                transition: "all 0.2s ease",
-              }}
-            >
-              Return to Home
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Session Blocked Banner (cross-device) */}
-      {sessionBlocked && (
-        <div
-          className="fade-up"
-          style={{
-            position: "absolute",
-            top: 18,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "rgba(220, 38, 38, 0.12)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            border: "1px solid rgba(220, 38, 38, 0.3)",
-            color: "#DC2626",
-            fontSize: 12.5,
-            fontWeight: 600,
-            padding: "9px 18px",
-            borderRadius: 12,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            boxShadow: "0 8px 32px rgba(220, 38, 38, 0.12)",
-            whiteSpace: "nowrap",
-            zIndex: 99,
-          }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-          </svg>
-          <span>Admin session active on another device. Ask them to log out first.</span>
-          {onSessionReset && (
-            <button
-              type="button"
-              onClick={onSessionReset}
-              style={{
-                background: "rgba(220, 38, 38, 0.15)",
-                border: "1px solid rgba(220, 38, 38, 0.3)",
-                borderRadius: "6px",
-                color: "#DC2626",
-                cursor: "pointer",
-                fontSize: "11px",
-                fontWeight: 700,
-                padding: "4px 10px",
-                marginLeft: "8px",
-                textTransform: "uppercase",
-                transition: "all 0.15s ease",
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = "#DC2626";
-                e.currentTarget.style.color = "#fff";
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = "rgba(220, 38, 38, 0.15)";
-                e.currentTarget.style.color = "#DC2626";
-              }}
-            >
-              Reset
-            </button>
-          )}
-        </div>
-      )}
-
-      <form
-        onSubmit={handleSubmit}
-        className="card fade-up"
-        style={{
-          width: 390,
-          padding: "36px 32px",
-          boxShadow: theme === "dark" 
-            ? "0 12px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)" 
-            : "0 12px 40px rgba(16, 24, 32, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.01)",
-          background: theme === "dark" 
-            ? "rgba(23, 27, 33, 0.85)" 
-            : "rgba(255, 255, 255, 0.85)",
-          backdropFilter: "blur(18px)",
-          borderRadius: 16,
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
         {/* Sleek top crawling loading progress line */}
         {loading && (
           <div
@@ -582,6 +473,80 @@ export default function AdminLogin({
           </button>
         </div>
       </form>
+
+          {/* Active Admins Panel */}
+          <div
+            className="card fade-up"
+            style={{
+              width: "100%",
+              maxWidth: 320,
+              padding: "36px 30px",
+              boxShadow: theme === "dark" 
+                ? "0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)" 
+                : "0 20px 50px rgba(16, 24, 32, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.01)",
+              background: theme === "dark" 
+                ? "rgba(17, 24, 39, 0.55)" 
+                : "rgba(255, 255, 255, 0.45)",
+              backdropFilter: "blur(30px)",
+              WebkitBackdropFilter: "blur(30px)",
+              border: theme === "dark"
+                ? "1px solid rgba(255, 255, 255, 0.08)"
+                : "1px solid rgba(0, 0, 0, 0.08)",
+              borderRadius: 20,
+              display: "flex",
+              flexDirection: "column",
+              gap: 20,
+            }}
+          >
+            <div>
+              <h3 className="display" style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "var(--ink)" }}>
+                Active Admins
+              </h3>
+              <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 4, marginBottom: 0 }}>
+                Currently logged in admin accounts.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, overflowY: "auto", minHeight: 180 }}>
+              {activeAdmins.length === 0 ? (
+                <div style={{ color: "var(--muted)", fontSize: 13, padding: "20px 0", textAlign: "center", fontStyle: "italic" }}>
+                  No active administrator sessions.
+                </div>
+              ) : (
+                activeAdmins.map((adm, idx) => (
+                  <div key={idx} style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: "10px 14px",
+                    background: theme === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                    borderRadius: 12, border: "1px solid var(--border)",
+                    animation: "fade-in 0.3s ease"
+                  }}>
+                    <span style={{
+                      position: "relative", display: "inline-flex", width: 8, height: 8
+                    }}>
+                      <span style={{
+                        position: "absolute", display: "inline-flex", width: "100%", height: "100%",
+                        background: "#10B981", borderRadius: "50%", opacity: 0.75,
+                        animation: "ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite"
+                      }}></span>
+                      <span style={{
+                        position: "relative", display: "inline-flex", width: 8, height: 8,
+                        background: "#10B981", borderRadius: "50%"
+                      }}></span>
+                    </span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: "var(--ink)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        {adm.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "capitalize", marginTop: 2 }}>
+                        {adm.role === "head" ? "Head Admin" : adm.role === "gate_manager" ? "Gate Manager" : "Security"}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Footer */}
