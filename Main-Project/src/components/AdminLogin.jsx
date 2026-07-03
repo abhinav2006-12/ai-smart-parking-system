@@ -75,10 +75,33 @@ export default function AdminLogin({
     setLoading(true);
     setErr("");
 
-    // Authenticate using multi-admin database auth
+    // Authenticate using backend Express JWT Auth (with direct client-side fallback)
     setTimeout(async () => {
       try {
-        const user = await loginAdminAccount(email, password);
+        let user;
+        let token;
+        try {
+          const response = await fetch("/api/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            user = data.user;
+            token = data.token;
+            localStorage.setItem("parkpilot_admin_token", token);
+          } else {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || "Backend auth returned error status.");
+          }
+        } catch (backendErr) {
+          console.warn("[AdminLogin] Express backend auth unavailable. Falling back to local direct database auth:", backendErr.message);
+          user = await loginAdminAccount(email, password);
+          localStorage.removeItem("parkpilot_admin_token"); // Clear stale token
+        }
+
         await logActivity(user, "Logged in");
         setSuccess(true);
         setTimeout(() => onSuccess(user), 800);
