@@ -71,4 +71,16 @@ function vercelApiPlugin() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), vercelApiPlugin()],
+  server: {
+    proxy: {
+      '/api/chat': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/api/admin': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
 })

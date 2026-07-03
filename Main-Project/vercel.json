@@ -3,6 +3,8 @@
   "outputDirectory": "dist",
   "devCommand": "npm run dev -- --port $PORT",
   "rewrites": [
+    { "source": "/api/chat", "destination": "/api/express.js" },
+    { "source": "/api/admin/login", "destination": "/api/express.js" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
