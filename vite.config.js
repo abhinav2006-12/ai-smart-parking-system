@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import anprHandler from './api/anpr.js'
 import chatbotHandler from './api/chatbot.js'
 import expressHandler from './api/express.js'
+import dashboardInsightHandler from './api/dashboard-insight.js'
 
 function vercelApiPlugin() {
   return {
@@ -63,6 +64,29 @@ function vercelApiPlugin() {
           await chatbotHandler(req, res);
         } catch (err) {
           console.error('[Chatbot Middleware] Unhandled Error:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Internal server error' });
+          }
+        }
+      });
+
+      server.middlewares.use('/api/dashboard-insight', async (req, res, _next) => {
+        console.log('[DashboardInsight Middleware] Request received:', req.method, req.url);
+
+        res.status = function (code) {
+          this.statusCode = code;
+          return this;
+        };
+        res.json = function (data) {
+          this.setHeader('Content-Type', 'application/json');
+          this.end(JSON.stringify(data));
+          return this;
+        };
+
+        try {
+          await dashboardInsightHandler(req, res);
+        } catch (err) {
+          console.error('[DashboardInsight Middleware] Unhandled Error:', err);
           if (!res.headersSent) {
             res.status(500).json({ error: 'Internal server error' });
           }

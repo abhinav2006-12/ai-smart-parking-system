@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -13,6 +13,7 @@ import {
   Legend,
 } from "recharts";
 import { fmtMoney, isSameDay } from "../lib/format";
+import AIInsightCard from "./AIInsightCard";
 
 
 
@@ -20,6 +21,11 @@ export default function DashboardTab({ store, onRefresh }) {
   const [selectedSlotType, setSelectedSlotType] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState(null);
+  const statsRef = useRef(null);
+
+  const handleViewAnalytics = () => {
+    statsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleRefresh = async () => {
     if (refreshing) return;
@@ -125,7 +131,11 @@ export default function DashboardTab({ store, onRefresh }) {
 
   return (
     <div className="fade-up" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* AI Operations Overview */}
+      <AIInsightCard onViewAnalytics={handleViewAnalytics} />
+
       {/* Dashboard Header */}
+      <div ref={statsRef} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <div>
           <h2 className="display" style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Dashboard Overview</h2>

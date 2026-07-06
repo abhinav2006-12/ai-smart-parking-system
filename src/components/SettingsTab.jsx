@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
-import { wipeAllData } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
+import { CHANGELOG } from "../lib/changelog";
 
 const TYPES = ["standard", "ev", "taxi"];
 
 export default function SettingsTab({ store, updateStore, onLogout, adminUser }) {
   const [local, setLocal] = useState(() => JSON.parse(JSON.stringify(store.settings)));
   const [saved, setSaved] = useState(false);
-  const [wiping, setWiping] = useState(false);
+  
+  // Changelog UI state
+  const [changelogSearch, setChangelogSearch] = useState("");
+  const [expandedVersions, setExpandedVersions] = useState({ [CHANGELOG[0].version]: true }); // expand latest by default
 
   useEffect(() => {
     setLocal(JSON.parse(JSON.stringify(store.settings)));
@@ -33,43 +36,7 @@ export default function SettingsTab({ store, updateStore, onLogout, adminUser })
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleWipeData = async () => {
-    const confirm1 = window.confirm(
-      "WARNING: You are about to wipe the entire database.\n\n" +
-      "This will permanently delete all vehicle transaction logs and revenue records.\n\n" +
-      "Do you want to continue?"
-    );
-    if (!confirm1) return;
 
-    const confirm2 = window.confirm(
-      "CRITICAL WARNING: This action is permanent and CANNOT be undone.\n\n" +
-      "Are you absolutely certain you want to proceed with clearing all system logs?"
-    );
-    if (!confirm2) return;
-
-    const password = window.prompt("Enter the database administrator password to confirm data wipe:");
-    if (password === null) return;
-
-    if (password !== "parkdatabase") {
-      alert("Incorrect password. Database wipe aborted.");
-      return;
-    }
-
-    setWiping(true);
-    try {
-      // First wipe Supabase directly so data doesn't reload on refresh
-      await wipeAllData();
-      // Then clear the local React store + localStorage
-      updateStore((prev) => ({ ...prev, vehicles: [], revenueLog: [] }));
-      await logActivity(adminUser, "Wiped database logs");
-      alert("Database wiped successfully! All vehicle and revenue logs have been deleted.");
-    } catch (err) {
-      console.error("Wipe failed:", err);
-      alert("Wipe failed: " + (err?.message || "Unknown error. Check console for details."));
-    } finally {
-      setWiping(false);
-    }
-  };
 
   return (
     <div className="fade-up" style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%" }}>
@@ -142,26 +109,81 @@ export default function SettingsTab({ store, updateStore, onLogout, adminUser })
           )}
 
 
-          {/* Card 4: Danger Zone (Wipe Data) */}
-          {adminUser?.role === "head" && (
-            <div className="card" style={{ padding: "24px", boxShadow: "var(--shadow-sm)", border: "1px solid var(--danger-soft)" }}>
-              <h3 className="display" style={{ fontSize: 16, fontWeight: 600, color: "var(--danger)", marginBottom: 4 }}>
-                Danger Zone
+
+          {/* Card 5: System Updates & Changelog */}
+          <div className="card" style={{ padding: "24px", boxShadow: "var(--shadow-sm)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <h3 className="display" style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
+                System Update Log
               </h3>
-              <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-                Permanently delete all vehicle transaction logs and revenue records from the database.
-              </p>
-              <button onClick={handleWipeData} disabled={wiping} className="btn btn-danger" style={{ width: "100%", justifyContent: "center" }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginRight: 6 }}>
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  <line x1="10" y1="11" x2="10" y2="17"></line>
-                  <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-                {wiping ? "Wiping…" : "Wipe Database Data"}
-              </button>
+              <span className="changelog-total-badge">{CHANGELOG.length} releases</span>
             </div>
-          )}
+            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
+              Track new updates, features, and fixes across the ParkPilot system.
+            </p>
+
+            {/* Changelog Search */}
+            <div style={{ position: "relative", marginBottom: 14 }}>
+              <input
+                type="text"
+                placeholder="Search updates..."
+                value={changelogSearch}
+                onChange={(e) => setChangelogSearch(e.target.value)}
+                style={{ fontSize: 13, padding: "8px 12px", width: "100%" }}
+              />
+            </div>
+
+            {/* Updates list */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 380, overflowY: "auto", paddingRight: 4 }}>
+              {CHANGELOG.filter(entry => {
+                const search = changelogSearch.toLowerCase();
+                return (
+                  entry.version.toLowerCase().includes(search) ||
+                  entry.title.toLowerCase().includes(search) ||
+                  entry.items.some(item => item.toLowerCase().includes(search))
+                );
+              }).map((entry) => {
+                const isExpanded = !!expandedVersions[entry.version];
+                const tagColorClass = {
+                  new: "changelog-badge-new",
+                  improved: "changelog-badge-improved",
+                  fix: "changelog-badge-fix",
+                  security: "changelog-badge-security",
+                }[entry.tag] || "changelog-badge-improved";
+
+                return (
+                  <div key={entry.version} className="changelog-item">
+                    {/* Header trigger */}
+                    <div
+                      className="changelog-item-header"
+                      onClick={() => setExpandedVersions(prev => ({ ...prev, [entry.version]: !prev[entry.version] }))}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                        <span className="changelog-version">{entry.version}</span>
+                        <span className={`changelog-badge ${tagColorClass}`}>{entry.tag}</span>
+                        <span className="changelog-title truncate">{entry.title}</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <span className="changelog-date">{entry.date}</span>
+                        <span className={`changelog-chevron ${isExpanded ? "rotated" : ""}`}>▼</span>
+                      </div>
+                    </div>
+
+                    {/* Collapsible Body */}
+                    {isExpanded && (
+                      <div className="changelog-item-body fade-in">
+                        <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5, lineHeight: 1.5, color: "var(--ink)", opacity: 0.9 }}>
+                          {entry.items.map((item, idx) => (
+                            <li key={idx} style={{ marginBottom: 6 }}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 

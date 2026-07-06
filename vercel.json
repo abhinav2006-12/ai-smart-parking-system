@@ -5,6 +5,7 @@
   "rewrites": [
     { "source": "/api/chat", "destination": "/api/express.js" },
     { "source": "/api/admin/login", "destination": "/api/express.js" },
+    { "source": "/api/dashboard-insight", "destination": "/api/dashboard-insight.js" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
