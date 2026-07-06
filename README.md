@@ -34,49 +34,48 @@ Data lives in Supabase (PostgreSQL), so multiple devices and tabs stay in sync a
 
 ```
 ai-smart-parking-system-main/
-└── Main-Project/
-    ├── api/
-    │   └── anpr.js              # Vercel Serverless Function — ANPR proxy (holds the API token)
-    ├── public/
-    │   ├── favicon.svg
-    │   ├── icons.svg
-    │   └── _redirects           # Netlify SPA fallback route
-    ├── src/
-    │   ├── components/
-    │   │   ├── AdminLogin.jsx         # PIN login + cross-device session enforcement
-    │   │   ├── AdminPanel.jsx         # Tab shell: Dashboard / Vehicles / Settings
-    │   │   ├── AmbientBackground.jsx  # Decorative animated background
-    │   │   ├── CheckInFlow.jsx        # Vehicle check-in with ANPR + duplicate detection
-    │   │   ├── CheckOutFlow.jsx       # Fee calculation + UPI QR payment flow
-    │   │   ├── DashboardTab.jsx       # Revenue charts, occupancy stats, slot breakdown
-    │   │   ├── GuestMenu.jsx          # Entry point for guest (check-in / check-out)
-    │   │   ├── GuestPanel.jsx         # Guest-facing wrapper
-    │   │   ├── HomeScreen.jsx         # Landing screen with theme toggle
-    │   │   ├── LiveCameraCapture.jsx  # Live camera stream + auto-capture loop (1 fps)
-    │   │   ├── PlateCapture.jsx       # Unified plate input — camera or file upload
-    │   │   ├── PriceChartOverlay.jsx  # Pricing tier overlay shown during check-in
-    │   │   ├── SettingsTab.jsx        # Slot counts, rates, UPI config, data wipe
-    │   │   ├── ThemeToggle.jsx        # Light/dark switcher
-    │   │   ├── VehicleListingTab.jsx  # Sortable/filterable vehicle history table
-    │   │   └── VehicleLoader.jsx      # Loading screen animation
-    │   ├── hooks/
-    │   │   ├── useRoute.js      # Lightweight hash/path router (no React Router)
-    │   │   ├── useStore.js      # Central state — loads from Supabase, syncs on change
-    │   │   └── useTheme.js      # OS-preference-aware dark mode, persisted to localStorage
-    │   ├── lib/
-    │   │   ├── anpr.js          # Client-side fetch wrapper for POST /api/anpr
-    │   │   ├── format.js        # uid(), fmtDateTime(), fmtMoney(), isSameDay()
-    │   │   ├── plate.js         # Indian plate regex validators (loose + strict)
-    │   │   ├── storage.js       # localStorage helpers + defaultStore factory
-    │   │   └── supabase.js      # Supabase client, CRUD sync, admin session management
-    │   ├── App.jsx              # Top-level routing + admin session lifecycle
-    │   ├── index.css            # Global CSS, CSS variables, theme tokens
-    │   └── main.jsx             # React entry point
-    ├── .env.example
-    ├── index.html
-    ├── package.json
-    ├── vercel.json              # SPA rewrite: all paths → index.html
-    └── vite.config.js
+├── api/
+│   └── anpr.js              # Vercel Serverless Function — ANPR proxy (holds the API token)
+├── public/
+│   ├── favicon.svg
+│   ├── icons.svg
+│   └── _redirects           # Netlify SPA fallback route
+├── src/
+│   ├── components/
+│   │   ├── AdminLogin.jsx         # PIN login + cross-device session enforcement
+│   │   ├── AdminPanel.jsx         # Tab shell: Dashboard / Vehicles / Settings
+│   │   ├── AmbientBackground.jsx  # Decorative animated background
+│   │   ├── CheckInFlow.jsx        # Vehicle check-in with ANPR + duplicate detection
+│   │   ├── CheckOutFlow.jsx       # Fee calculation + UPI QR payment flow
+│   │   ├── DashboardTab.jsx       # Revenue charts, occupancy stats, slot breakdown
+│   │   ├── GuestMenu.jsx          # Entry point for guest (check-in / check-out)
+│   │   ├── GuestPanel.jsx         # Guest-facing wrapper
+│   │   ├── HomeScreen.jsx         # Landing screen with theme toggle
+│   │   ├── LiveCameraCapture.jsx  # Live camera stream + auto-capture loop (1 fps)
+│   │   ├── PlateCapture.jsx       # Unified plate input — camera or file upload
+│   │   ├── PriceChartOverlay.jsx  # Pricing tier overlay shown during check-in
+│   │   ├── SettingsTab.jsx        # Slot counts, rates, UPI config, data wipe
+│   │   ├── ThemeToggle.jsx        # Light/dark switcher
+│   │   ├── VehicleListingTab.jsx  # Sortable/filterable vehicle history table
+│   │   └── VehicleLoader.jsx      # Loading screen animation
+│   ├── hooks/
+│   │   ├── useRoute.js      # Lightweight hash/path router (no React Router)
+│   │   ├── useStore.js      # Central state — loads from Supabase, syncs on change
+│   │   └── useTheme.js      # OS-preference-aware dark mode, persisted to localStorage
+│   ├── lib/
+│   │   ├── anpr.js          # Client-side fetch wrapper for POST /api/anpr
+│   │   ├── format.js        # uid(), fmtDateTime(), fmtMoney(), isSameDay()
+│   │   ├── plate.js         # Indian plate regex validators (loose + strict)
+│   │   ├── storage.js       # localStorage helpers + defaultStore factory
+│   │   └── supabase.js      # Supabase client, CRUD sync, admin session management
+│   ├── App.jsx              # Top-level routing + admin session lifecycle
+│   ├── index.css            # Global CSS, CSS variables, theme tokens
+│   └── main.jsx             # React entry point
+├── .env.example
+├── index.html
+├── package.json
+├── vercel.json              # SPA rewrite: all paths → index.html
+└── vite.config.js
 ```
 
 ---
@@ -140,7 +139,7 @@ create table revenue_log (
 
 ```bash
 git clone 
-cd ai-smart-parking-system-main/Main-Project
+cd ai-smart-parking-system-main
 npm install
 ```
 
