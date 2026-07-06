@@ -153,7 +153,7 @@ export async function syncStoreToSupabase(newStore, oldStore) {
 
   const formatTime = (val) => {
     if (!val) return null;
-    return new Date(val).toISOString();
+    return new Date(val).getTime();
   };
 
   // 2. Sync Vehicles
