@@ -44,8 +44,24 @@ export default function DashboardTab({ store, onRefresh }) {
   const totalSlots = store.settings.totalSlots;
   const emptySlots = Math.max(0, totalSlots - activeParking);
 
-  const revenueToday = store.revenueLog.filter((r) => isSameDay(r.date, now)).reduce((s, r) => s + r.amount, 0);
-  const revenueYesterday = store.revenueLog.filter((r) => isSameDay(r.date, yesterday)).reduce((s, r) => s + r.amount, 0);
+  const augmentedRevenueLog = useMemo(() => {
+    const logs = [...store.revenueLog];
+    const loggedVehicleIds = new Set(logs.map((r) => r.vehicleId));
+    store.vehicles.forEach((v) => {
+      if (v.status === "completed" && v.fee !== null && v.fee > 0 && !loggedVehicleIds.has(v.id)) {
+        logs.push({
+          id: `rev-fallback-${v.id}`,
+          vehicleId: v.id,
+          amount: v.fee,
+          date: v.exitTime || v.entryTime || Date.now(),
+        });
+      }
+    });
+    return logs;
+  }, [store.revenueLog, store.vehicles]);
+
+  const revenueToday = augmentedRevenueLog.filter((r) => isSameDay(r.date, now)).reduce((s, r) => s + r.amount, 0);
+  const revenueYesterday = augmentedRevenueLog.filter((r) => isSameDay(r.date, yesterday)).reduce((s, r) => s + r.amount, 0);
 
   const chartData = useMemo(() => {
     // Build a local-date key "YYYY-MM-DD" from any timestamp (ms number or ISO string)
@@ -58,7 +74,7 @@ export default function DashboardTab({ store, onRefresh }) {
 
     // Group revenue by local date key
     const revenueByDay = {};
-    for (const r of store.revenueLog) {
+    for (const r of augmentedRevenueLog) {
       const key = toDateKey(r.date);
       if (key) revenueByDay[key] = (revenueByDay[key] || 0) + r.amount;
     }
@@ -78,7 +94,7 @@ export default function DashboardTab({ store, onRefresh }) {
         net: revenue - DAILY_OPERATING_COST,
       };
     });
-  }, [store.revenueLog]);
+  }, [augmentedRevenueLog]);
 
   const slotTypeData = useMemo(() => {
     const occupied = { standard: 0, ev: 0, taxi: 0 };

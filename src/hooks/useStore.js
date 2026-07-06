@@ -6,8 +6,15 @@ import { loadStoreFromSupabase, syncStoreToSupabase, supabase } from "../lib/sup
 const parseTime = (val) => {
   if (!val) return null;
   const num = Number(val);
-  return isNaN(num) ? new Date(val).getTime() : num;
+  if (isNaN(num)) {
+    return new Date(val).getTime();
+  }
+  if (num > 0 && num < 10000000000) {
+    return num * 1000;
+  }
+  return num;
 };
+
 
 function mapVehicleRow(v) {
   return {
