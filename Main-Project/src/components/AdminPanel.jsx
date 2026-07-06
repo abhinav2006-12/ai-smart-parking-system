@@ -5,7 +5,8 @@ import SettingsTab from "./SettingsTab";
 import AdminAccountsTab from "./AdminAccountsTab";
 import ActivityLogTab from "./ActivityLogTab";
 import ThemeToggle from "./ThemeToggle";
-import ParkPilotChatbot from "./ParkPilotChatbot";
+import { ChatbotProvider } from "../context/ChatbotContext";
+import AdminChatbot from "./AdminChatbot/AdminChatbot";
 
 export default function AdminPanel({ store, updateStore, onLogout, theme, onToggleTheme: toggleTheme, onRefresh, adminUser }) {
   const [tab, setTab] = useState("dashboard");
@@ -30,7 +31,7 @@ export default function AdminPanel({ store, updateStore, onLogout, theme, onTogg
   };
 
   return (
-    <>
+    <ChatbotProvider adminUser={adminUser}>
       <div className="admin-container">
         {/* Sidebar - Always visible */}
         <aside className="admin-sidebar" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
@@ -152,7 +153,7 @@ export default function AdminPanel({ store, updateStore, onLogout, theme, onTogg
           </footer>
         </div>
       </div>
-      <ParkPilotChatbot mode="admin" adminUser={adminUser} />
-    </>
+      <AdminChatbot adminUser={adminUser} />
+    </ChatbotProvider>
   );
 }

@@ -32,13 +32,6 @@ export const chatController = {
       const dbContext = {};
       
       try {
-        // Fetch structural Supabase snapshot for grounding all admin chat requests
-        dbContext.systemSnapshot = {
-          occupancy: await supabaseService.getSlotAvailability().catch(() => null),
-          todayRevenue: await supabaseService.getTodaysRevenue().catch(() => 0),
-          recentFailedOrFlaggedANPR: await supabaseService.getRecentFailedOrFlaggedANPR().catch(() => []),
-        };
-
         switch (intent) {
           case "available_slots":
             dbContext.slots = await supabaseService.getSlotAvailability();
@@ -73,7 +66,13 @@ export const chatController = {
             dbContext.logs = await supabaseService.getRecentLogs();
             break;
           default:
-            // For general conversational queries, we rely on the systemSnapshot already injected above
+            // For general conversational queries, inject a lightweight system summary (slots, active counts)
+            // so the LLM is always grounded in the live state
+            dbContext.systemSummary = {
+              slots: await supabaseService.getSlotAvailability().catch(() => null),
+              activeAdmins: (await supabaseService.getActiveAdmins().catch(() => null))?.activeAdmins?.length || 0,
+              todaysBookingsCount: (await supabaseService.getTodaysBookings().catch(() => null))?.length || 0,
+            };
             break;
         }
       } catch (dbErr) {
@@ -97,26 +96,6 @@ export const chatController = {
     } catch (err) {
       console.error("[ChatController] Error processing chat request:", err);
       return res.status(500).json({ error: "Failed to generate AI response. Please try again later." });
-    }
-  },
-
-  /**
-   * Process vehicle record summary requests. Exposes POST /api/chat/summary
-   */
-  async handleSummary(req, res) {
-    const { vehicle, stats } = req.body;
-
-    if (!vehicle) {
-      return res.status(400).json({ error: "Missing vehicle object in request body." });
-    }
-
-    try {
-      console.log(`[ChatController] Generating summary for vehicle: ${vehicle.number}`);
-      const summaryText = await aiService.generateSummary(vehicle, stats || {});
-      return res.status(200).json({ summary: summaryText });
-    } catch (err) {
-      console.error("[ChatController] Error generating summary:", err);
-      return res.status(500).json({ error: "Failed to generate vehicle summary." });
     }
   }
 };

@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect, Fragment } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { fmtMoney, fmtDateTime, formatDuration } from "../lib/format";
-import { computeVehicleStats } from "../lib/stats";
 
 const PAGE_SIZE = 15;
 
@@ -11,67 +10,6 @@ export default function VehicleListingTab({ store, onRefresh }) {
   const [page, setPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState(null);
-
-  const [expandedSummaryId, setExpandedSummaryId] = useState(null);
-  const [summaries, setSummaries] = useState({});
-  const [loadingSummaryId, setLoadingSummaryId] = useState(null);
-  const [errorSummaryId, setErrorSummaryId] = useState(null);
-
-  const stats = useMemo(() => computeVehicleStats(store.vehicles), [store.vehicles]);
-
-  const handleToggleSummary = async (v) => {
-    if (expandedSummaryId === v.id) {
-      setExpandedSummaryId(null);
-      return;
-    }
-
-    setExpandedSummaryId(v.id);
-
-    if (summaries[v.id]) return;
-
-    setLoadingSummaryId(v.id);
-    setErrorSummaryId(null);
-
-    try {
-      const token = localStorage.getItem("parkpilot_admin_token");
-      const res = await fetch("/api/chat/summary", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          vehicle: {
-            id: v.id,
-            number: v.number,
-            type: v.type,
-            entryTime: v.entryTime,
-            exitTime: v.exitTime,
-            status: v.status,
-            fee: v.fee,
-            durationMins: v.durationMins
-          },
-          stats: {
-            duration: stats.duration,
-            fee: stats.fee,
-            unusualReasons: stats.vehicleOutlierReasons[v.id] || []
-          }
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error(`Server error (${res.status})`);
-      }
-
-      const data = await res.json();
-      setSummaries((prev) => ({ ...prev, [v.id]: data.summary }));
-    } catch (err) {
-      console.error("[VehicleListingTab] Summary fetch failed:", err);
-      setErrorSummaryId(v.id);
-    } finally {
-      setLoadingSummaryId(null);
-    }
-  };
 
   const filtered = useMemo(() => {
     return store.vehicles
@@ -183,7 +121,7 @@ export default function VehicleListingTab({ store, onRefresh }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
             <thead>
               <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-                {["Number", "Type", "Entry", "Exit", "Duration", "Fee", "Status", "Actions"].map((h) => (
+                {["Number", "Type", "Entry", "Exit", "Duration", "Fee", "Status"].map((h) => (
                   <th key={h} style={{ padding: "10px 8px", color: "var(--muted)", fontWeight: 600, fontSize: 11.5, letterSpacing: ".01em" }}>
                     {h}
                   </th>
@@ -191,115 +129,32 @@ export default function VehicleListingTab({ store, onRefresh }) {
               </tr>
             </thead>
             <tbody>
-              {pageItems.map((v) => {
-                const isUnusual = stats.unusualVehicleIds.has(v.id);
-                return (
-                  <Fragment key={v.id}>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td className="mono" style={{ padding: "12px 8px", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-                        {v.number}
-                        {isUnusual && (
-                          <span
-                            className="badge"
-                            onClick={() => handleToggleSummary(v)}
-                            title={`Outlier detected: ${stats.vehicleOutlierReasons[v.id]?.join(", ")}. Click to view AI summary.`}
-                            style={{
-                              background: "var(--danger-soft)",
-                              color: "var(--danger)",
-                              fontSize: 10.5,
-                              padding: "2px 6px",
-                              cursor: "pointer",
-                              userSelect: "none"
-                            }}
-                          >
-                            ⚠️ Unusual
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: "12px 8px", textTransform: "capitalize" }}>{v.type}</td>
-                      <td style={{ padding: "12px 8px", color: "var(--muted)" }}>{fmtDateTime(v.entryTime)}</td>
-                      <td style={{ padding: "12px 8px", color: "var(--muted)" }}>{v.exitTime ? fmtDateTime(v.exitTime) : "—"}</td>
-                      <td style={{ padding: "12px 8px", color: "var(--muted)" }}>{v.durationMins ? formatDuration(v.durationMins) : "—"}</td>
-                      <td style={{ padding: "12px 8px", fontWeight: 600 }}>{v.fee ? fmtMoney(v.fee) : "—"}</td>
-                      <td style={{ padding: "12px 8px" }}>
-                        <span
-                          className="badge"
-                          style={{
-                            background: v.status === "parked" ? "var(--warning-soft)" : "var(--success-soft)",
-                            color: v.status === "parked" ? "var(--warning)" : "var(--success)",
-                          }}
-                        >
-                          {v.status === "parked" ? "Parked" : "Checked Out"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 8px" }}>
-                        <button
-                          onClick={() => handleToggleSummary(v)}
-                          className="btn btn-ghost"
-                          style={{
-                            padding: "4px 8px",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            cursor: "pointer"
-                          }}
-                          title="Generate AI summary details for this vehicle"
-                        >
-                          <span>🪄</span>
-                          <span>{expandedSummaryId === v.id ? "Close" : "Summarize"}</span>
-                        </button>
-                      </td>
-                    </tr>
-                    {expandedSummaryId === v.id && (
-                      <tr key={`${v.id}-summary`} style={{ background: "var(--surface-muted)" }}>
-                        <td colSpan="8" style={{ padding: "14px 20px", fontSize: 13.5, borderBottom: "1px solid var(--border)" }}>
-                          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                            <span style={{ fontSize: 16, marginTop: 1 }}>🤖</span>
-                            <div style={{ flex: 1 }}>
-                              {loadingSummaryId === v.id ? (
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--muted)" }}>
-                                  <span
-                                    className="spin"
-                                    style={{
-                                      width: 14,
-                                      height: 14,
-                                      border: "2px solid var(--border)",
-                                      borderTopColor: "var(--accent)",
-                                      borderRadius: "50%",
-                                      display: "inline-block"
-                                    }}
-                                  />
-                                  <span>Generating AI outlier explanation...</span>
-                                </div>
-                              ) : errorSummaryId === v.id ? (
-                                <div style={{ color: "var(--danger)" }}>
-                                  Failed to load summary.{" "}
-                                  <button
-                                    onClick={() => handleToggleSummary(v)}
-                                    className="btn btn-ghost"
-                                    style={{ padding: "2px 6px", fontSize: 12, display: "inline-block", color: "var(--accent)" }}
-                                  >
-                                    Retry
-                                  </button>
-                                </div>
-                              ) : (
-                                <div style={{ lineHeight: 1.5, color: "var(--ink)", whiteSpace: "pre-wrap" }}>
-                                  {summaries[v.id]}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
+              {pageItems.map((v) => (
+                <tr key={v.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td className="mono" style={{ padding: "12px 8px", fontWeight: 600 }}>
+                    {v.number}
+                  </td>
+                  <td style={{ padding: "12px 8px", textTransform: "capitalize" }}>{v.type}</td>
+                  <td style={{ padding: "12px 8px", color: "var(--muted)" }}>{fmtDateTime(v.entryTime)}</td>
+                  <td style={{ padding: "12px 8px", color: "var(--muted)" }}>{v.exitTime ? fmtDateTime(v.exitTime) : "—"}</td>
+                  <td style={{ padding: "12px 8px", color: "var(--muted)" }}>{v.durationMins ? formatDuration(v.durationMins) : "—"}</td>
+                  <td style={{ padding: "12px 8px", fontWeight: 600 }}>{v.fee ? fmtMoney(v.fee) : "—"}</td>
+                  <td style={{ padding: "12px 8px" }}>
+                    <span
+                      className="badge"
+                      style={{
+                        background: v.status === "parked" ? "var(--warning-soft)" : "var(--success-soft)",
+                        color: v.status === "parked" ? "var(--warning)" : "var(--success)",
+                      }}
+                    >
+                      {v.status === "parked" ? "Parked" : "Checked Out"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
               {pageItems.length === 0 && (
                 <tr>
-                  <td colSpan="8" style={{ padding: "30px 8px", textAlign: "center", color: "var(--muted)" }}>
+                  <td colSpan="7" style={{ padding: "30px 8px", textAlign: "center", color: "var(--muted)" }}>
                     No vehicles match these filters.
                   </td>
                 </tr>
