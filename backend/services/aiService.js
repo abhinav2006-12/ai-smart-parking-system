@@ -157,7 +157,7 @@ INSTRUCTIONS & RULES:
       reply += `**Breakdown of Slots Left:**\n`;
       reply += `* Standard: **${s.availableSlotsByType.standard}** left (of ${s.slotsByType.standard})\n`;
       reply += `* EV Chargers: **${s.availableSlotsByType.ev}** left (of ${s.slotsByType.ev})\n`;
-      reply += `* Accessible: **${s.availableSlotsByType.disabled}** left (of ${s.slotsByType.disabled})\n`;
+      reply += `* Taxi: **${s.availableSlotsByType.taxi}** left (of ${s.slotsByType.taxi})\n`;
       return reply;
     }
 

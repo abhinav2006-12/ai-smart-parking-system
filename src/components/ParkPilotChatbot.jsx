@@ -10,7 +10,7 @@ Help users by answering questions about:
 - Vehicle Check-Out process
 - Parking fee calculation
 - UPI payment
-- Vehicle types (Standard, EV, Disabled)
+- Vehicle types (Standard, EV, Taxi)
 - Parking slot availability
 - Admin features (general explanation only)
 - Camera and number plate scanning
@@ -106,7 +106,7 @@ function getLocalResponse(userMessage) {
   const query = userMessage.toLowerCase().trim();
   
   if (query.includes("check in") || query.includes("check-in") || query.includes("checkin") || query.includes("enter") || query.includes("entry")) {
-    return "To check in your vehicle:\n1. Select the **Check-In** button on the main screen.\n2. Choose your vehicle type (Standard, EV, or Disabled).\n3. Scan your number plate using the camera (or enter it manually if scanning fails).\n4. The system will save your record and assign you a slot.";
+    return "To check in your vehicle:\n1. Select the **Check-In** button on the main screen.\n2. Choose your vehicle type (Standard, EV, or Taxi).\n3. Scan your number plate using the camera (or enter it manually if scanning fails).\n4. The system will save your record and assign you a slot.";
   }
   
   if (query.includes("check out") || query.includes("check-out") || query.includes("checkout") || query.includes("exit") || query.includes("pay")) {
@@ -133,15 +133,15 @@ function getLocalResponse(userMessage) {
     return "Parking records are managed by the gate manager or administrator. Attendants with administrator credentials can manage active vehicles and configurations in the **Admin Panel**.";
   }
   
-  if (query.includes("vehicle") || query.includes("type") || query.includes("ev") || query.includes("disabled") || query.includes("accessible")) {
-    return "ParkPilot supports three vehicle categories:\n- **Standard**: Regular fuel/gas cars.\n- **EV**: Electric Vehicles with access to dedicated charging indicators.\n- **Disabled**: Dedicated spaces for accessible parking.";
+  if (query.includes("vehicle") || query.includes("type") || query.includes("ev") || query.includes("taxi")) {
+    return "ParkPilot supports three vehicle categories:\n- **Standard**: Regular fuel/gas cars.\n- **EV**: Electric Vehicles with access to dedicated charging indicators.\n- **Taxi**: Dedicated spaces for taxi vehicles.";
   }
 
   if (query.includes("hi") || query.includes("hello") || query.includes("hey") || query.includes("greet")) {
     return "Hello! I'm your ParkPilot Assistant. How can I help you with the smart parking system today?";
   }
 
-  return "I'm currently running in local offline assistant mode. I can help you with common questions about:\n- Check-In & Check-Out process\n- Parking fee calculations & rates\n- Number plate scanning / manual entry\n- Supported vehicle types (Standard, EV, Disabled)\n- Admin settings & logs\n\nTry asking a question containing some of these keywords!";
+  return "I'm currently running in local offline assistant mode. I can help you with common questions about:\n- Check-In & Check-Out process\n- Parking fee calculations & rates\n- Number plate scanning / manual entry\n- Supported vehicle types (Standard, EV, Taxi)\n- Admin settings & logs\n\nTry asking a question containing some of these keywords!";
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────

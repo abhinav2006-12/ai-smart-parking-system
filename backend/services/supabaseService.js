@@ -28,10 +28,10 @@ export const supabaseService = {
     if (vehiclesError) throw vehiclesError;
 
     const totalSlots = settings.total_slots || 0;
-    const slotsByType = settings.slots_by_type || { standard: 0, ev: 0, disabled: 0 };
+    const slotsByType = settings.slots_by_type || { standard: 0, ev: 0, taxi: 0 };
 
     // Group parked vehicles by type
-    const parkedCounts = { standard: 0, ev: 0, disabled: 0 };
+    const parkedCounts = { standard: 0, ev: 0, taxi: 0 };
     parkedVehicles.forEach((v) => {
       const type = (v.type || "standard").toLowerCase();
       if (type in parkedCounts) {
