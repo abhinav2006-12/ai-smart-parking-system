@@ -152,27 +152,32 @@ cp .env.example .env
 Open `.env` and fill in your values:
 
 ```env
-PLATERECOGNIZER_TOKEN=XXXXXXXXXXXXXXXXXXXX
-VITE_SUPABASE_URL=XXXXXXXXXXXXXXXXX
-VITE_SUPABASE_ANON_KEY=XXXXXXXXXXXXX
+PLATERECOGNIZER_TOKEN=your_platerecognizer_api_token
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_public_key
+GEMINI_API_KEY=your_gemini_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+JWT_SECRET=your_jwt_signing_secret_key
+```
 
-`PLATERECOGNIZER_TOKEN` is read only by the serverless function — it is never bundled into client-side JavaScript. The two `VITE_` variables are embedded in the browser bundle (they're public Supabase credentials, which is intentional and safe with correct RLS policies).
+- `PLATERECOGNIZER_TOKEN`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, and `JWT_SECRET` are read only by serverless functions and backend services — they are never exposed to client-side JavaScript.
+- The two `VITE_` variables are embedded in the browser bundle (public Supabase credentials, protected by database RLS policies).
 
 ### 3. Start the development server
 
-For full functionality including ANPR plate detection, you need the Vercel dev server (not plain Vite), because `/api/anpr.js` is a serverless function:
-
-```bash
-vercel dev
-```
-
-Plain Vite still works for everything except plate detection:
+To run the project locally with full features (including ANPR plate detection, Express backend routing, and AI chatbot integration), run:
 
 ```bash
 npm run dev
 ```
 
-If plate detection is unavailable, the camera/upload UI shows a "service unavailable" error from the missing `/api/anpr` endpoint — this is expected behavior, not a bug.
+In this project, Vite is configured (`vite.config.js`) to mount all backend serverless APIs (`/api/anpr`, `/api/chatbot`, `/api/chat`, etc.) as middlewares, so plain `npm run dev` supports all serverless operations without needing `vercel dev` locally!
+
+Alternatively, to emulate the Vercel cloud environment locally:
+
+```bash
+vercel dev
+```
 
 ---
 
@@ -200,15 +205,16 @@ vercel
 
 During setup: Framework preset → **Vite**, Build command → `npm run build`, Output directory → `dist`.
 
-Then add your environment variable in **Project Settings → Environment Variables**:
+Then add your environment variables in **Project Settings → Environment Variables**:
 
-```
-PLATERECOGNIZER_TOKEN = your_token_here
-```
+- `PLATERECOGNIZER_TOKEN`: Your Plate Recognizer API token.
+- `GEMINI_API_KEY`: Google Gemini API key (recommended for the AI assistant chatbot).
+- `OPENAI_API_KEY`: OpenAI API key (optional fallback).
+- `JWT_SECRET`: Random secure string for signing session tokens.
+- `VITE_SUPABASE_URL`: Public Supabase URL.
+- `VITE_SUPABASE_ANON_KEY`: Public Supabase anonymous key.
 
-The `VITE_SUPABASE_*` variables should also be added here (not just in your local `.env`) so the production build has access to them.
-
-> Plate detection will silently fail with a 500 error until `PLATERECOGNIZER_TOKEN` is set in Vercel's environment — it is never read from `.env` in production.
+> Plate detection and AI features will return errors until their respective keys are configured in Vercel's environment settings. They are never read from `.env` in production.
 
 ### Other Hosts
 
@@ -318,14 +324,18 @@ OXLint is configured via `.oxlintrc.json`. It's significantly faster than ESLint
 
 ## Environment Variables Reference
 
-| Variable | Where it's used | Required |
-|---|---|---|
-| `PLATERECOGNIZER_TOKEN` | `api/anpr.js` (server-side only) | Yes, for ANPR |
-| `VITE_SUPABASE_URL` | `src/lib/supabase.js` (client-side) | Yes, for cloud sync |
-| `VITE_SUPABASE_ANON_KEY` | `src/lib/supabase.js` (client-side) | Yes, for cloud sync |
+| Variable | Where it's used | Required | Description |
+|---|---|---|---|
+| `PLATERECOGNIZER_TOKEN` | `api/anpr.js` (server-side) | Yes (for ANPR) | Authentication token for Plate Recognizer API. |
+| `GEMINI_API_KEY` | `api/chatbot.js`, `backend/services/aiService.js` | Yes (for AI features) | API key for Gemini 2.5 Flash model features. |
+| `OPENAI_API_KEY` | `backend/services/aiService.js` | No (optional fallback) | API key for OpenAI model fallback. |
+| `JWT_SECRET` | `backend/controllers/authController.js` | Yes (in production) | Key to sign admin session tokens. |
+| `VITE_SUPABASE_URL` | `src/lib/supabase.js` (client-side) | Yes (for sync) | Endpoint URL for the Supabase database. |
+| `VITE_SUPABASE_ANON_KEY` | `src/lib/supabase.js` (client-side) | Yes (for sync) | Anonymous client key for Supabase. |
 
-Missing `VITE_SUPABASE_*` vars → app falls back to `localStorage` only, no cross-device sync.  
-Missing `PLATERECOGNIZER_TOKEN` → plate detection returns a 500 error; everything else works normally.
+- Missing `VITE_SUPABASE_*` vars → App runs entirely in local mode, using `localStorage` as storage fallback.
+- Missing `PLATERECOGNIZER_TOKEN` → Automatic plate detection shows a configuration error, requiring manual entry.
+- Missing `GEMINI_API_KEY` and `OPENAI_API_KEY` → Chatbot responses fall back to offline/local matching.
 
 ---
 
