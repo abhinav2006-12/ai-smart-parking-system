@@ -23,7 +23,7 @@ export const supabaseService = {
     const { data: parkedVehicles, error: vehiclesError } = await supabase
       .from("vehicles")
       .select("type")
-      .eq("status", "parked");
+      .in("status", ["parked", "Parked"]);
 
     if (vehiclesError) throw vehiclesError;
 
@@ -237,7 +237,7 @@ export const supabaseService = {
     const { data: cancelled, error } = await supabase
       .from("vehicles")
       .select("*")
-      .eq("status", "cancelled")
+      .in("status", ["cancelled", "Cancelled"])
       .order("entry_time", { ascending: false })
       .limit(15);
 

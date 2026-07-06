@@ -11,6 +11,27 @@ export const supabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
+export const normalizeStatusFromDb = (status) => {
+  if (!status) return "parked";
+  const s = status.toLowerCase();
+  if (s === "checked out" || s === "completed") return "completed";
+  if (s === "parked") return "parked";
+  if (s === "cancelled") return "cancelled";
+  if (s === "pending") return "pending";
+  return s;
+};
+
+export const normalizeStatusToDb = (status) => {
+  if (!status) return "Parked";
+  const s = status.toLowerCase();
+  if (s === "completed" || s === "checked out") return "Checked Out";
+  if (s === "parked") return "Parked";
+  if (s === "cancelled") return "Cancelled";
+  if (s === "pending") return "Pending";
+  return status;
+};
+
+
 /**
  * Loads settings, vehicles, and revenueLog tables from Supabase, mapping them to the camelCase local store structure.
  */
@@ -80,7 +101,7 @@ export async function loadStoreFromSupabase() {
     type: v.type,
     entryTime: parseTime(v.entry_time),
     exitTime: parseTime(v.exit_time),
-    status: v.status,
+    status: normalizeStatusFromDb(v.status),
     fee: v.fee ? Number(v.fee) : null,
     durationMins: v.duration_mins,
     entryPhoto: v.entry_photo,
@@ -148,7 +169,7 @@ export async function syncStoreToSupabase(newStore, oldStore) {
         type: v.type,
         entry_time: formatTime(v.entryTime),
         exit_time: formatTime(v.exitTime),
-        status: v.status,
+        status: normalizeStatusToDb(v.status),
         fee: v.fee,
         duration_mins: v.durationMins,
         entry_photo: v.entryPhoto,
@@ -222,7 +243,7 @@ export async function wipeAllData() {
   const { error: vehErr } = await supabase
     .from("vehicles")
     .delete()
-    .in("status", ["parked", "completed", "cancelled", "pending"]); // covers every possible status
+    .in("status", ["parked", "completed", "cancelled", "pending", "Parked", "Checked Out", "Cancelled", "Pending"]); // covers every possible status
 
   if (vehErr) {
     console.error("[wipeAllData] vehicles error:", vehErr);

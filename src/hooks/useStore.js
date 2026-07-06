@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { loadStore, saveStore, defaultStore, migrateStore } from "../lib/storage";
-import { loadStoreFromSupabase, syncStoreToSupabase, supabase } from "../lib/supabase";
+import { loadStoreFromSupabase, syncStoreToSupabase, supabase, normalizeStatusFromDb } from "../lib/supabase";
 
 // Helper: map a raw Supabase vehicle row (snake_case) to camelCase
 const parseTime = (val) => {
@@ -23,7 +23,7 @@ function mapVehicleRow(v) {
     type: v.type,
     entryTime: parseTime(v.entry_time),
     exitTime: parseTime(v.exit_time),
-    status: v.status,
+    status: normalizeStatusFromDb(v.status),
     fee: v.fee ? Number(v.fee) : null,
     durationMins: v.duration_mins,
     entryPhoto: v.entry_photo,
