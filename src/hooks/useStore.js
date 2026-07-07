@@ -1,13 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { loadStore, saveStore, defaultStore, migrateStore } from "../lib/storage";
-import { loadStoreFromSupabase, syncStoreToSupabase, supabase } from "../lib/supabase";
+import { loadStoreFromSupabase, syncStoreToSupabase, supabase, normalizeStatusFromDb } from "../lib/supabase";
 
 // Helper: map a raw Supabase vehicle row (snake_case) to camelCase
 const parseTime = (val) => {
   if (!val) return null;
   const num = Number(val);
-  return isNaN(num) ? new Date(val).getTime() : num;
+  if (isNaN(num)) {
+    return new Date(val).getTime();
+  }
+  if (num > 0 && num < 10000000000) {
+    return num * 1000;
+  }
+  return num;
 };
+
 
 function mapVehicleRow(v) {
   return {
@@ -16,7 +23,7 @@ function mapVehicleRow(v) {
     type: v.type,
     entryTime: parseTime(v.entry_time),
     exitTime: parseTime(v.exit_time),
-    status: v.status,
+    status: normalizeStatusFromDb(v.status),
     fee: v.fee ? Number(v.fee) : null,
     durationMins: v.duration_mins,
     entryPhoto: v.entry_photo,

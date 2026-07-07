@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -13,6 +13,7 @@ import {
   Legend,
 } from "recharts";
 import { fmtMoney, isSameDay } from "../lib/format";
+import AIInsightCard from "./AIInsightCard";
 
 
 
@@ -20,6 +21,11 @@ export default function DashboardTab({ store, onRefresh }) {
   const [selectedSlotType, setSelectedSlotType] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState(null);
+  const statsRef = useRef(null);
+
+  const handleViewAnalytics = () => {
+    statsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleRefresh = async () => {
     if (refreshing) return;
@@ -44,8 +50,24 @@ export default function DashboardTab({ store, onRefresh }) {
   const totalSlots = store.settings.totalSlots;
   const emptySlots = Math.max(0, totalSlots - activeParking);
 
-  const revenueToday = store.revenueLog.filter((r) => isSameDay(r.date, now)).reduce((s, r) => s + r.amount, 0);
-  const revenueYesterday = store.revenueLog.filter((r) => isSameDay(r.date, yesterday)).reduce((s, r) => s + r.amount, 0);
+  const augmentedRevenueLog = useMemo(() => {
+    const logs = [...store.revenueLog];
+    const loggedVehicleIds = new Set(logs.map((r) => r.vehicleId));
+    store.vehicles.forEach((v) => {
+      if (v.status === "completed" && v.fee !== null && v.fee > 0 && !loggedVehicleIds.has(v.id)) {
+        logs.push({
+          id: `rev-fallback-${v.id}`,
+          vehicleId: v.id,
+          amount: v.fee,
+          date: v.exitTime || v.entryTime || Date.now(),
+        });
+      }
+    });
+    return logs;
+  }, [store.revenueLog, store.vehicles]);
+
+  const revenueToday = augmentedRevenueLog.filter((r) => isSameDay(r.date, now)).reduce((s, r) => s + r.amount, 0);
+  const revenueYesterday = augmentedRevenueLog.filter((r) => isSameDay(r.date, yesterday)).reduce((s, r) => s + r.amount, 0);
 
   const chartData = useMemo(() => {
     // Build a local-date key "YYYY-MM-DD" from any timestamp (ms number or ISO string)
@@ -58,7 +80,7 @@ export default function DashboardTab({ store, onRefresh }) {
 
     // Group revenue by local date key
     const revenueByDay = {};
-    for (const r of store.revenueLog) {
+    for (const r of augmentedRevenueLog) {
       const key = toDateKey(r.date);
       if (key) revenueByDay[key] = (revenueByDay[key] || 0) + r.amount;
     }
@@ -78,7 +100,7 @@ export default function DashboardTab({ store, onRefresh }) {
         net: revenue - DAILY_OPERATING_COST,
       };
     });
-  }, [store.revenueLog]);
+  }, [augmentedRevenueLog]);
 
   const slotTypeData = useMemo(() => {
     const occupied = { standard: 0, ev: 0, taxi: 0 };
@@ -109,7 +131,11 @@ export default function DashboardTab({ store, onRefresh }) {
 
   return (
     <div className="fade-up" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* AI Operations Overview */}
+      <AIInsightCard onViewAnalytics={handleViewAnalytics} />
+
       {/* Dashboard Header */}
+      <div ref={statsRef} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <div>
           <h2 className="display" style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Dashboard Overview</h2>

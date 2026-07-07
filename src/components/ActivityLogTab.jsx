@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { fetchActivityLog } from "../lib/activityLog";
 
 const ROLE_COLORS = {
@@ -121,7 +121,7 @@ export default function ActivityLogTab() {
           No activity found.
         </div>
       ) : (
-        <div className="card" style={{ padding:0, overflow:"hidden", boxShadow:"var(--shadow-sm)" }}>
+        <div className="card scrollable-log-container" style={{ padding:0, maxHeight: 500, overflowY: "auto", boxShadow:"var(--shadow-sm)" }}>
           {filtered.map((log, i) => {
             const roleColor = ROLE_COLORS[log.admin_role] || "#94A3B8";
             return (

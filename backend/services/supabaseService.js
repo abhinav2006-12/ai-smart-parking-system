@@ -23,15 +23,15 @@ export const supabaseService = {
     const { data: parkedVehicles, error: vehiclesError } = await supabase
       .from("vehicles")
       .select("type")
-      .eq("status", "parked");
+      .in("status", ["parked", "Parked"]);
 
     if (vehiclesError) throw vehiclesError;
 
     const totalSlots = settings.total_slots || 0;
-    const slotsByType = settings.slots_by_type || { standard: 0, ev: 0, disabled: 0 };
+    const slotsByType = settings.slots_by_type || { standard: 0, ev: 0, taxi: 0 };
 
     // Group parked vehicles by type
-    const parkedCounts = { standard: 0, ev: 0, disabled: 0 };
+    const parkedCounts = { standard: 0, ev: 0, taxi: 0 };
     parkedVehicles.forEach((v) => {
       const type = (v.type || "standard").toLowerCase();
       if (type in parkedCounts) {
@@ -69,16 +69,29 @@ export const supabaseService = {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayStartMs = todayStart.getTime();
+    const todayStartSecs = Math.floor(todayStartMs / 1000);
 
     const { data: bookings, error } = await supabase
       .from("vehicles")
       .select("*")
-      .gte("entry_time", todayStartMs)
+      .or(`entry_time.gte.${todayStartMs},and(entry_time.gte.${todayStartSecs},entry_time.lt.10000000000)`)
       .order("entry_time", { ascending: false });
 
     if (error) throw error;
 
-    return bookings || [];
+    const parseDbTime = (val) => {
+      if (!val) return null;
+      const num = Number(val);
+      if (isNaN(num)) return new Date(val).getTime();
+      if (num > 0 && num < 10000000000) return num * 1000;
+      return num;
+    };
+
+    return (bookings || []).map((b) => ({
+      ...b,
+      entry_time: parseDbTime(b.entry_time),
+      exit_time: parseDbTime(b.exit_time),
+    }));
   },
 
   /**
@@ -91,26 +104,63 @@ export const supabaseService = {
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     oneWeekAgo.setHours(0, 0, 0, 0);
     const oneWeekAgoMs = oneWeekAgo.getTime();
+    const oneWeekAgoSecs = Math.floor(oneWeekAgoMs / 1000);
 
     const { data: logs, error } = await supabase
       .from("revenue_log")
-      .select("amount, date")
-      .gte("date", oneWeekAgoMs);
+      .select("amount, date, vehicle_id")
+      .or(`date.gte.${oneWeekAgoMs},and(date.gte.${oneWeekAgoSecs},date.lt.10000000000)`);
 
     if (error) throw error;
 
-    const totalRevenue = (logs || []).reduce((sum, r) => sum + Number(r.amount), 0);
+    const { data: completedVehicles, error: vehiclesError } = await supabase
+      .from("vehicles")
+      .select("id, fee, exit_time, entry_time")
+      .eq("status", "completed")
+      .or(`exit_time.gte.${oneWeekAgoMs},and(exit_time.gte.${oneWeekAgoSecs},exit_time.lt.10000000000)`);
+
+    if (vehiclesError) throw vehiclesError;
+
+    const parseDbTime = (val) => {
+      if (!val) return null;
+      const num = Number(val);
+      if (isNaN(num)) return new Date(val).getTime();
+      if (num > 0 && num < 10000000000) return num * 1000;
+      return num;
+    };
+
+    const finalLogs = (logs || []).map((r) => ({
+      vehicleId: r.vehicle_id,
+      amount: Number(r.amount),
+      date: parseDbTime(r.date),
+    }));
+
+    const loggedVehicleIds = new Set(finalLogs.map((r) => r.vehicleId));
+
+    (completedVehicles || []).forEach((v) => {
+      if (v.fee !== null && Number(v.fee) > 0 && !loggedVehicleIds.has(v.id)) {
+        finalLogs.push({
+          vehicleId: v.id,
+          amount: Number(v.fee),
+          date: parseDbTime(v.exit_time || v.entry_time) || Date.now(),
+        });
+      }
+    });
+
+    const totalRevenue = finalLogs.reduce((sum, r) => sum + r.amount, 0);
 
     // Group revenue by day for mini breakdown
     const dailyBreakdown = {};
-    (logs || []).forEach((r) => {
-      const dayStr = new Date(Number(r.date)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-      dailyBreakdown[dayStr] = (dailyBreakdown[dayStr] || 0) + Number(r.amount);
+    finalLogs.forEach((r) => {
+      if (r.date) {
+        const dayStr = new Date(r.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+        dailyBreakdown[dayStr] = (dailyBreakdown[dayStr] || 0) + r.amount;
+      }
     });
 
     return {
       totalRevenue,
-      logCount: logs?.length || 0,
+      logCount: finalLogs.length,
       dailyBreakdown,
     };
   },
@@ -163,7 +213,19 @@ export const supabaseService = {
 
     if (error) throw error;
 
-    return vehicles || [];
+    const parseDbTime = (val) => {
+      if (!val) return null;
+      const num = Number(val);
+      if (isNaN(num)) return new Date(val).getTime();
+      if (num > 0 && num < 10000000000) return num * 1000;
+      return num;
+    };
+
+    return (vehicles || []).map((v) => ({
+      ...v,
+      entry_time: parseDbTime(v.entry_time),
+      exit_time: parseDbTime(v.exit_time),
+    }));
   },
 
   /**
@@ -175,13 +237,25 @@ export const supabaseService = {
     const { data: cancelled, error } = await supabase
       .from("vehicles")
       .select("*")
-      .eq("status", "cancelled")
+      .in("status", ["cancelled", "Cancelled"])
       .order("entry_time", { ascending: false })
       .limit(15);
 
     if (error) throw error;
 
-    return cancelled || [];
+    const parseDbTime = (val) => {
+      if (!val) return null;
+      const num = Number(val);
+      if (isNaN(num)) return new Date(val).getTime();
+      if (num > 0 && num < 10000000000) return num * 1000;
+      return num;
+    };
+
+    return (cancelled || []).map((b) => ({
+      ...b,
+      entry_time: parseDbTime(b.entry_time),
+      exit_time: parseDbTime(b.exit_time),
+    }));
   },
 
   /**
@@ -207,18 +281,28 @@ export const supabaseService = {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
     const sevenDaysAgoMs = sevenDaysAgo.getTime();
+    const sevenDaysAgoSecs = Math.floor(sevenDaysAgoMs / 1000);
 
     const { data: entries, error } = await supabase
       .from("vehicles")
       .select("entry_time")
-      .gte("entry_time", sevenDaysAgoMs);
+      .or(`entry_time.gte.${sevenDaysAgoMs},and(entry_time.gte.${sevenDaysAgoSecs},entry_time.lt.10000000000)`);
 
     if (error) throw error;
 
+    const parseDbTime = (val) => {
+      if (!val) return null;
+      const num = Number(val);
+      if (isNaN(num)) return new Date(val).getTime();
+      if (num > 0 && num < 10000000000) return num * 1000;
+      return num;
+    };
+
     const hourCounts = Array(24).fill(0);
     (entries || []).forEach((e) => {
-      if (e.entry_time) {
-        const d = new Date(Number(e.entry_time));
+      const parsedTime = parseDbTime(e.entry_time);
+      if (parsedTime) {
+        const d = new Date(parsedTime);
         const hr = d.getHours();
         hourCounts[hr]++;
       }
