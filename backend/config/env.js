@@ -1,5 +1,15 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from current working directory
 dotenv.config();
+
+// Also load .env from the workspace root relative to this file
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 export const env = {
   PORT: process.env.PORT || 5000,
