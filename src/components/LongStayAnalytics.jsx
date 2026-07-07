@@ -14,25 +14,47 @@ export default function LongStayAnalytics({ analytics }) {
     {
       label: "Long Stay Vehicles",
       value: totalLongStay,
-      icon: "🚗",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3C13 6.8 11.5 6 10 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h3" />
+          <circle cx="7.5" cy="17.5" r="2.5" />
+          <circle cx="16.5" cy="17.5" r="2.5" />
+        </svg>
+      ),
       color: totalLongStay > 0 ? "var(--danger)" : "var(--success)"
     },
     {
       label: "Longest Stay",
       value: totalLongStay > 0 ? `${longestStayDays} Days` : "—",
-      icon: "⏳",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      ),
       color: "var(--ink)"
     },
     {
       label: "Average Stay",
       value: totalLongStay > 0 ? `${averageStayDays} Days` : "—",
-      icon: "📊",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+      ),
       color: "var(--ink)"
     },
     {
       label: "Occupied by Long Stay",
       value: `${occupiedPct}%`,
-      icon: "📉",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+          <path d="M22 12A10 10 0 0 0 12 2v10z" fill="currentColor" fillOpacity="0.08" />
+        </svg>
+      ),
       color: occupiedPct > 15 ? "var(--warning)" : "var(--ink)"
     }
   ];
@@ -77,7 +99,7 @@ export default function LongStayAnalytics({ analytics }) {
             >
               {c.label}
             </span>
-            <span style={{ fontSize: "16px" }}>{c.icon}</span>
+            <div style={{ color: "var(--muted)", display: "flex", alignItems: "center" }}>{c.icon}</div>
           </div>
           <div
             className="display"

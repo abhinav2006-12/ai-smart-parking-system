@@ -29,7 +29,6 @@ export function getStayCategory(durationMs) {
     return {
       type: "normal",
       label: "Normal",
-      dot: "🟢",
       style: {
         background: "var(--success-soft)",
         color: "var(--success)",
@@ -39,7 +38,6 @@ export function getStayCategory(durationMs) {
     return {
       type: "extended",
       label: "Extended Stay",
-      dot: "🟡",
       style: {
         background: "var(--warning-soft)",
         color: "var(--warning)",
@@ -49,7 +47,6 @@ export function getStayCategory(durationMs) {
     return {
       type: "long",
       label: "Long Stay",
-      dot: "🟠",
       style: {
         background: "rgba(161, 98, 7, 0.12)",
         color: "#D97706",
@@ -59,7 +56,6 @@ export function getStayCategory(durationMs) {
     return {
       type: "attention",
       label: "Attention Required",
-      dot: "🔴",
       style: {
         background: "var(--danger-soft)",
         color: "var(--danger)",

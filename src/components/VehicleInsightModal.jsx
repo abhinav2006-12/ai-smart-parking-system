@@ -97,7 +97,12 @@ export default function VehicleInsightModal({ vehicle, settings, onClose }) {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <h3 id="vehicle-insight-title" style={{ fontSize: "17px", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-            <span>🚗</span> Vehicle Insight
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent)" }}>
+              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3C13 6.8 11.5 6 10 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h3" />
+              <circle cx="7.5" cy="17.5" r="2.5" />
+              <circle cx="16.5" cy="17.5" r="2.5" />
+            </svg>
+            Vehicle Insight
           </h3>
           <button
             onClick={onClose}
@@ -177,7 +182,12 @@ export default function VehicleInsightModal({ vehicle, settings, onClose }) {
         {/* AI Insight */}
         <div style={{ marginBottom: 20 }}>
           <h4 style={{ fontSize: "13.5px", fontWeight: 700, margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
-            <span>🤖</span> AI Analysis Insight
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent)" }}>
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+              <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" fillOpacity="0.1" />
+              <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3" />
+            </svg>
+            AI Analysis Insight
           </h4>
           <div
             style={{
@@ -197,7 +207,12 @@ export default function VehicleInsightModal({ vehicle, settings, onClose }) {
         {/* Recommendations */}
         <div style={{ marginBottom: 24 }}>
           <h4 style={{ fontSize: "13.5px", fontWeight: 700, margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
-            <span>💡</span> Recommended Actions
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--warning)" }}>
+              <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .3 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+              <line x1="9" y1="18" x2="15" y2="18" />
+              <line x1="10" y1="22" x2="14" y2="22" />
+            </svg>
+            Recommended Actions
           </h4>
           <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px", color: "var(--ink)", lineHeight: "1.6" }}>
             {recommendations.map((rec, index) => (

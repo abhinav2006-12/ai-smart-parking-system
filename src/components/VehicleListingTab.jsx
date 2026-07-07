@@ -185,7 +185,16 @@ export default function VehicleListingTab({ store, onRefresh }) {
                               gap: "4px"
                             }}
                           >
-                            <span style={{ fontSize: "10px" }}>{stayCategory.dot}</span>
+                            <span
+                              style={{
+                                width: "6px",
+                                height: "6px",
+                                borderRadius: "50%",
+                                backgroundColor: "currentColor",
+                                boxShadow: "0 0 5px currentColor",
+                                display: "inline-block"
+                              }}
+                            />
                             {stayCategory.label} ({shortDurationStr})
                           </span>
                           {hasLongStayInsight && (
