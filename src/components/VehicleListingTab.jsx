@@ -1,5 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { fmtMoney, fmtDateTime, formatDuration } from "../lib/format";
+import { getStayCategory, formatDurationShort, calculateLongStayAnalytics } from "../lib/longStayRules";
+import LongStaySummaryCard from "./LongStaySummaryCard";
+import LongStayAnalytics from "./LongStayAnalytics";
+import VehicleInsightModal from "./VehicleInsightModal";
 
 const PAGE_SIZE = 15;
 
@@ -10,6 +14,12 @@ export default function VehicleListingTab({ store, onRefresh }) {
   const [page, setPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState(null);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+
+  // Compute long-stay analytics. Will recalculate when vehicles list changes.
+  const longStayAnalytics = useMemo(() => {
+    return calculateLongStayAnalytics(store.vehicles, Date.now());
+  }, [store.vehicles]);
 
   const filtered = useMemo(() => {
     return store.vehicles
@@ -43,6 +53,9 @@ export default function VehicleListingTab({ store, onRefresh }) {
 
   return (
     <div className="fade-up">
+      <LongStaySummaryCard analytics={longStayAnalytics} />
+      <LongStayAnalytics analytics={longStayAnalytics} />
+
       <div className="card" style={{ padding: "20px", boxShadow: "var(--shadow-sm)" }}>
         {/* Header row */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
@@ -121,7 +134,7 @@ export default function VehicleListingTab({ store, onRefresh }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
             <thead>
               <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-                {["Number", "Type", "Entry", "Exit", "Duration", "Fee", "Status"].map((h) => (
+                {["Number", "Type", "Entry", "Exit", "Duration", "Fee", "Status", "Status / Insight"].map((h) => (
                   <th key={h} style={{ padding: "10px 8px", color: "var(--muted)", fontWeight: 600, fontSize: 11.5, letterSpacing: ".01em" }}>
                     {h}
                   </th>
@@ -149,6 +162,57 @@ export default function VehicleListingTab({ store, onRefresh }) {
                     >
                       {v.status === "parked" ? "Parked" : "Checked Out"}
                     </span>
+                  </td>
+                  <td style={{ padding: "12px 8px" }}>
+                    {(() => {
+                      const isParked = v.status === "parked";
+                      if (!isParked) return <span style={{ color: "var(--muted)" }}>—</span>;
+                      const durationMs = Date.now() - v.entryTime;
+                      const stayCategory = getStayCategory(durationMs);
+                      const shortDurationStr = formatDurationShort(durationMs);
+                      const hasLongStayInsight = durationMs > 5 * 24 * 60 * 60 * 1000;
+
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                          <span
+                            className="badge"
+                            style={{
+                              ...stayCategory.style,
+                              fontSize: "11px",
+                              fontWeight: "700",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                          >
+                            <span style={{ fontSize: "10px" }}>{stayCategory.dot}</span>
+                            {stayCategory.label} ({shortDurationStr})
+                          </span>
+                          {hasLongStayInsight && (
+                            <button
+                              onClick={() => setSelectedVehicle(v)}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                padding: "2px 0",
+                                color: "var(--accent)",
+                                fontSize: "11.5px",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                textDecoration: "underline",
+                                textDecorationColor: "rgba(var(--accent-rgb), 0.3)"
+                              }}
+                              title="View AI Insight"
+                            >
+                              <span>ⓘ</span> View Insight
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
@@ -185,6 +249,13 @@ export default function VehicleListingTab({ store, onRefresh }) {
           </div>
         </div>
       </div>
+      {selectedVehicle && (
+        <VehicleInsightModal
+          vehicle={selectedVehicle}
+          settings={store.settings}
+          onClose={() => setSelectedVehicle(null)}
+        />
+      )}
     </div>
   );
 }

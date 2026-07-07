@@ -8,6 +8,20 @@
 
 export const CHANGELOG = [
   {
+    version: "v2.5",
+    date: "7 Jul 2026",
+    tag: "new",
+    title: "AI Long-Stay Insights",
+    items: [
+      "Automatically flags parked vehicles staying more than 5 days in the vehicle listing.",
+      "Displays a dynamic Status / Insight column with color-coded stay indicators (Normal, Extended, Long, Attention Required).",
+      "Added smart analytics dashboard tracking total long-stays, longest stay, average stay, and slot capacity percentage.",
+      "Added AI Summary Card at the top of the list displaying dynamically generated operations summaries.",
+      "Introduced details modal containing dynamic natural-language AI insights and tailored action recommendations.",
+      "Fully optimized with React useMemo and dark-mode compatible responsive styling.",
+    ],
+  },
+  {
     version: "v2.4",
     date: "7 Jul 2025",
     tag: "new",
