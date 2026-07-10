@@ -8,11 +8,13 @@ A full-stack parking management web app built with React 19 + Vite, powered by r
 
 ParkPilot handles the complete lifecycle of a vehicle's visit — from the moment it rolls in to when it pays and exits.
 
-A **guest** walks up to a kiosk or uses their phone to check in, scan their plate, and generate a UPI QR payment on checkout. An **admin** (the parking attendant or manager) logs into a separate, hidden dashboard at `/admin` to see occupancy in real time, review vehicle history, configure slot counts and rates, and track daily revenue with charts.
+A **guest** walks up to a kiosk or uses their phone to check in, scan their plate, and generate a UPI QR payment on checkout. An **admin** (the parking attendant or manager) logs into a separate, hidden dashboard at `/admin` to see occupancy in real time, review vehicle history (including advanced metrics on long-stay vehicles), configure slot counts and rates, and track daily revenue with charts.
 
-The **AI Operations Overview** — the newest feature — automatically analyses today's parking data every time the Dashboard opens and generates a short executive summary at the top of the admin panel. It explains what is happening (demand rising, capacity near full, revenue outpacing volume, etc.) rather than just showing numbers. Think Microsoft Copilot or Notion AI applied to your parking operations.
+The **AI Long-Stay Insights** — the newest feature (v2.5) — automatically flags parked vehicles staying more than 5 days, tracking total long-stays, longest stays, and providing dynamic natural-language operations recommendations and action items.
 
-The **ANPR** feature is the automatic number plate recognition: instead of manually typing `MH12AB1234`, the attendant points the camera at the plate, and the system reads it — then lets them correct it before confirming. No OCR engine runs in the browser; images are routed through a small Vercel serverless function that keeps the API token safely server-side.
+The **AI Operations Overview** automatically analyses today's parking data every time the Dashboard opens and generates a short executive summary at the top of the admin panel. It explains what is happening (demand rising, capacity near full, revenue outpacing volume, etc.) rather than just showing numbers. Think Microsoft Copilot or Notion AI applied to your parking operations.
+
+The **ANPR** feature is the automatic number plate recognition: instead of manually typing `MH12AB1234`, the attendant points the camera at the plate, and the system reads it — then immediately surfaces the edit/verification field for any final corrections before confirming. No OCR engine runs in the browser; images are routed through a small Vercel serverless function that keeps the API token safely server-side.
 
 Data lives in Supabase (PostgreSQL), so multiple devices and tabs stay in sync automatically. `localStorage` is kept as a fallback cache so the app doesn't break if Supabase is temporarily unreachable.
 
@@ -58,21 +60,30 @@ ai-smart-parking-system/
 │   └── _redirects               # Netlify SPA fallback route
 ├── src/
 │   ├── components/
-│   │   ├── AIInsightCard.jsx        # 🆕 AI Operations Overview card (glassmorphism UI)
+│   │   ├── AdminChatbot/            # Admin Chatbot component folder
+│   │   ├── AIInsightCard.jsx        # AI Operations Overview card (glassmorphism UI)
+│   │   ├── ActivityLogTab.jsx       # Log history tab for admin actions
 │   │   ├── AdminLogin.jsx           # PIN login + cross-device session enforcement
 │   │   ├── AdminPanel.jsx           # Tab shell: Dashboard / Vehicles / Settings
 │   │   ├── AmbientBackground.jsx    # Decorative animated background
 │   │   ├── CheckInFlow.jsx          # Vehicle check-in with ANPR + duplicate detection
 │   │   ├── CheckOutFlow.jsx         # Fee calculation + UPI QR payment flow
 │   │   ├── DashboardTab.jsx         # Revenue charts, occupancy stats, slot breakdown
+│   │   ├── ErrorBoundary.jsx        # React error fallback component
 │   │   ├── GuestMenu.jsx            # Entry point for guest (check-in / check-out)
 │   │   ├── GuestPanel.jsx           # Guest-facing wrapper
 │   │   ├── HomeScreen.jsx           # Landing screen with theme toggle
 │   │   ├── LiveCameraCapture.jsx    # Live camera stream + auto-capture loop (1 fps)
+│   │   ├── LongStayAnalytics.jsx    # 🆕 Analytics sub-panel for long-stay stats
+│   │   ├── LongStaySummaryCard.jsx  # 🆕 At-a-glance KPI card for long-stay metrics
+│   │   ├── OfflinePage.jsx          # Offline fallback indicator page
+│   │   ├── ParkPilotChatbot.jsx     # Floating chat assistant UI
 │   │   ├── PlateCapture.jsx         # Unified plate input — camera or file upload
 │   │   ├── PriceChartOverlay.jsx    # Pricing tier overlay shown during check-in
+│   │   ├── PriorityBadge.jsx        # 🆕 Urgency label badge for long-stay vehicles
 │   │   ├── SettingsTab.jsx          # Slot counts, rates, UPI config, data wipe
 │   │   ├── ThemeToggle.jsx          # Light/dark switcher
+│   │   ├── VehicleInsightModal.jsx  # 🆕 Modal showing detailed AI long-stay analysis
 │   │   ├── VehicleListingTab.jsx    # Sortable/filterable vehicle history table
 │   │   └── VehicleLoader.jsx        # Loading screen animation
 │   ├── hooks/
