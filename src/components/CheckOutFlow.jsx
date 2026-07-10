@@ -361,7 +361,7 @@ export default function CheckOutFlow({ store, updateStore, onDone }) {
         />
       </div>
 
-      {captureMode === "manual" && (
+      {(captureMode === "manual" || isManual || photo) && (
         <div style={{ marginTop: 16 }}>
           <label>Vehicle Number (confirm / edit)</label>
           <div style={{ display: "flex", gap: 8 }}>

@@ -17,7 +17,7 @@ function vercelApiPlugin() {
       server.middlewares.use('/api/anpr', async (req, res, _next) => {
         console.log('[ANPR Middleware] Request received:', req.method, req.url);
         if (env.PLATERECOGNIZER_TOKEN) {
-          process.env.PLATRECOGNIZER_TOKEN = env.PLATERECOGNIZER_TOKEN;
+          process.env.PLATERECOGNIZER_TOKEN = env.PLATERECOGNIZER_TOKEN;
         } else {
           console.error('[ANPR Middleware] WARNING: PLATERECOGNIZER_TOKEN is missing in loadEnv!');
         }
