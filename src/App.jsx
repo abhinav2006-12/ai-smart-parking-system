@@ -169,7 +169,7 @@ export default function App() {
       <AmbientBackground />
       <div className="app-content">{content}</div>
       {/* Floating chatbot — available on every screen, hidden on /admin */}
-      {!isAdminRoute && <ParkPilotChatbot />}
+      {!isAdminRoute && <ParkPilotChatbot store={store} />}
     </>
   );
 }

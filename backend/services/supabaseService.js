@@ -13,7 +13,7 @@ export const supabaseService = {
     // Fetch settings
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
-      .select("total_slots, slots_by_type")
+      .select("total_slots, slots_by_type, rates")
       .eq("id", 1)
       .single();
 
@@ -29,6 +29,11 @@ export const supabaseService = {
 
     const totalSlots = settings.total_slots || 0;
     const slotsByType = settings.slots_by_type || { standard: 0, ev: 0, taxi: 0 };
+    const rates = settings.rates || {
+      standard: { hourly: 20, minHours: 1 },
+      ev: { hourly: 30, minHours: 1 },
+      taxi: { hourly: 10, minHours: 1 }
+    };
 
     // Group parked vehicles by type
     const parkedCounts = { standard: 0, ev: 0, taxi: 0 };
@@ -53,6 +58,7 @@ export const supabaseService = {
     return {
       totalSlots,
       slotsByType,
+      rates,
       parkedCounts,
       availableSlotsByType: available,
       totalParked,

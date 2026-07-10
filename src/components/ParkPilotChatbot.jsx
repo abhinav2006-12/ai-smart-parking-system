@@ -1,7 +1,33 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
-// ─── System prompt (exactly as authored by the ParkPilot team) ──────────────
-const SYSTEM_PROMPT = `You are ParkPilot Assistant, a friendly AI chatbot that helps users understand and use the ParkPilot Smart Parking System.
+// ─── System prompt generator (incorporates active rates & live slots) ──────────────
+function getSystemPrompt(settings, vehicles = []) {
+  const rates = settings?.rates || {};
+  const slots = settings?.slotsByType || {};
+
+  const standardRate = rates.standard?.hourly ?? 20;
+  const evRate = rates.ev?.hourly ?? 30;
+  const taxiRate = rates.taxi?.hourly ?? 10;
+  const standardMin = rates.standard?.minHours ?? 1;
+  const evMin = rates.ev?.minHours ?? 1;
+  const taxiMin = rates.taxi?.minHours ?? 1;
+
+  const totalSlots = settings?.totalSlots ?? 50;
+  const standardSlots = slots.standard ?? 30;
+  const evSlots = slots.ev ?? 12;
+  const taxiSlots = slots.taxi ?? 8;
+
+  const parked = vehicles.filter((v) => v.status === "parked") || [];
+  const parkedStandard = parked.filter((v) => v.type === "standard").length;
+  const parkedEv = parked.filter((v) => v.type === "ev").length;
+  const parkedTaxi = parked.filter((v) => v.type === "taxi").length;
+
+  const freeStandard = Math.max(0, standardSlots - parkedStandard);
+  const freeEv = Math.max(0, evSlots - parkedEv);
+  const freeTaxi = Math.max(0, taxiSlots - parkedTaxi);
+  const totalFree = freeStandard + freeEv + freeTaxi;
+
+  return `You are ParkPilot Assistant, a friendly AI chatbot that helps users understand and use the ParkPilot Smart Parking System.
 
 Your Role
 Help users by answering questions about:
@@ -36,6 +62,20 @@ Features include:
 - Admin dashboard for monitoring vehicles, occupancy, revenue, and parking settings.
 - Data is stored securely in Supabase.
 
+Current Real-Time Rates & Parking Rules:
+- Currency: Indian Rupee (₹)
+- Standard Vehicle Rate: ₹${standardRate}/hour (Minimum billable: ${standardMin} hours)
+- EV Vehicle Rate: ₹${evRate}/hour (Minimum billable: ${evMin} hours)
+- Taxi Vehicle Rate: ₹${taxiRate}/hour (Minimum billable: ${taxiMin} hours)
+- Fee Calculation: The total duration is rounded up to the nearest hour (e.g., 1 hour and 5 minutes counts as 2 hours) and multiplied by the hourly rate. It cannot be less than the minimum billable hours.
+
+Current Live Parking Occupancy & Slots:
+- Total Capacity: ${totalSlots} slots
+- Standard Slots: ${standardSlots} total (${freeStandard} currently free, ${parkedStandard} occupied)
+- EV Slots: ${evSlots} total (${freeEv} currently free, ${parkedEv} occupied)
+- Taxi Slots: ${taxiSlots} total (${freeTaxi} currently free, ${parkedTaxi} occupied)
+- Total Available Slots: ${totalFree} free slots out of ${totalSlots} total.
+
 Parking Flow:
 1. User selects Check-In.
 2. Camera scans the vehicle number plate.
@@ -48,15 +88,15 @@ Parking Flow:
 FAQs
 Q: How do I check in my vehicle? A: Select Check-In, choose your vehicle type, scan your number plate, and the system will save your parking record automatically.
 Q: How do I check out? A: Select Check-Out, scan the same number plate, pay the displayed fee using the generated UPI QR code, and confirm payment.
-Q: How is the parking fee calculated? A: The fee is calculated based on the parking duration and the hourly rate configured by the parking administrator.
+Q: How is the parking fee calculated? A: The fee is calculated based on the parking duration (rounded up to the nearest hour, with a minimum billable floor) and the configured hourly rates: Standard: ₹${standardRate}/hr, EV: ₹${evRate}/hr, Taxi: ₹${taxiRate}/hr.
 Q: What if my number plate isn't detected? A: You can manually enter or upload the vehicle number if automatic detection fails.
 Q: Is my information secure? A: Vehicle information is stored securely in the system database and is only used for parking management.
 Q: Can I reserve a parking slot? A: Currently, ParkPilot supports live parking management only and does not provide advance reservations.
 Q: Can I edit my parking record? A: Parking records are managed by the parking staff or administrator.
 
 Safety Rules
-- Never invent parking fees or slot availability.
-- If live information is unavailable, clearly state that you cannot access real-time parking data.
+- Never invent parking fees or slot availability. Use only the provided real-time rates and live occupancy slot counts shown above.
+- If live info is requested but the context is missing, clearly state you cannot access real-time data.
 - Never reveal admin credentials, API keys, database information, or internal system details.
 - Never fabricate information.
 - If you do not know an answer, politely say so and recommend contacting the parking administrator.
@@ -66,6 +106,7 @@ End responses naturally, for example:
 - "Let me know if you have any other questions."
 - "I'm happy to help with anything about ParkPilot."
 - "Feel free to ask if you need more assistance."`;
+}
 
 // ─── Quick-reply suggestions shown before first message ──────────────────────
 const SUGGESTIONS = [
@@ -102,8 +143,15 @@ function CloseIcon() {
 }
 
 // ─── Local offline FAQ matching responder ────────────────────────────────────
-function getLocalResponse(userMessage) {
+function getLocalResponse(userMessage, settings) {
   const query = userMessage.toLowerCase().trim();
+  const rates = settings?.rates || {};
+  const standardRate = rates.standard?.hourly ?? 20;
+  const evRate = rates.ev?.hourly ?? 30;
+  const taxiRate = rates.taxi?.hourly ?? 10;
+  const standardMin = rates.standard?.minHours ?? 1;
+  const evMin = rates.ev?.minHours ?? 1;
+  const taxiMin = rates.taxi?.minHours ?? 1;
   
   if (query.includes("check in") || query.includes("check-in") || query.includes("checkin") || query.includes("enter") || query.includes("entry")) {
     return "To check in your vehicle:\n1. Select the **Check-In** button on the main screen.\n2. Choose your vehicle type (Standard, EV, or Taxi).\n3. Scan your number plate using the camera (or enter it manually if scanning fails).\n4. The system will save your record and assign you a slot.";
@@ -114,7 +162,12 @@ function getLocalResponse(userMessage) {
   }
   
   if (query.includes("fee") || query.includes("calculate") || query.includes("rate") || query.includes("price") || query.includes("cost") || query.includes("money") || query.includes("charging")) {
-    return "Parking fees are calculated based on your vehicle type and the total duration parked. The hourly rates are configured by the administrator in the **Admin Panel** settings.";
+    return `Parking fees are calculated based on your vehicle type and the total duration parked. Current hourly rates:
+- **Standard**: ₹${standardRate}/hr (min. ${standardMin} hr)
+- **EV**: ₹${evRate}/hr (min. ${evMin} hr)
+- **Taxi**: ₹${taxiRate}/hr (min. ${taxiMin} hr)
+
+These rates are configured in the **Admin Panel** settings.`;
   }
   
   if (query.includes("detect") || query.includes("plate") || query.includes("scan") || query.includes("camera") || query.includes("recogni")) {
@@ -134,18 +187,28 @@ function getLocalResponse(userMessage) {
   }
   
   if (query.includes("vehicle") || query.includes("type") || query.includes("ev") || query.includes("taxi")) {
-    return "ParkPilot supports three vehicle categories:\n- **Standard**: Regular fuel/gas cars.\n- **EV**: Electric Vehicles with access to dedicated charging indicators.\n- **Taxi**: Dedicated spaces for taxi vehicles.";
+    return `ParkPilot supports three vehicle categories:
+- **Standard**: Regular fuel/gas cars (₹${standardRate}/hr, min. ${standardMin} hr).
+- **EV**: Electric Vehicles with access to dedicated charging indicators (₹${evRate}/hr, min. ${evMin} hr).
+- **Taxi**: Dedicated spaces for taxi vehicles (₹${taxiRate}/hr, min. ${taxiMin} hr).`;
   }
 
   if (query.includes("hi") || query.includes("hello") || query.includes("hey") || query.includes("greet")) {
     return "Hello! I'm your ParkPilot Assistant. How can I help you with the smart parking system today?";
   }
 
-  return "I'm currently running in local offline assistant mode. I can help you with common questions about:\n- Check-In & Check-Out process\n- Parking fee calculations & rates\n- Number plate scanning / manual entry\n- Supported vehicle types (Standard, EV, Taxi)\n- Admin settings & logs\n\nTry asking a question containing some of these keywords!";
+  return `I'm currently running in local offline assistant mode. I can help you with common questions about:
+- Check-In & Check-Out process
+- Parking fee calculations & rates (Standard: ₹${standardRate}/hr, EV: ₹${evRate}/hr, Taxi: ₹${taxiRate}/hr)
+- Number plate scanning / manual entry
+- Supported vehicle types (Standard, EV, Taxi)
+- Admin settings & logs
+
+Try asking a question containing some of these keywords!`;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function ParkPilotChatbot() {
+export default function ParkPilotChatbot({ store }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]); // { role: "user"|"assistant", content: string }
   const [input, setInput] = useState("");
@@ -202,6 +265,7 @@ export default function ParkPilotChatbot() {
     abortRef.current = controller;
 
     try {
+      const systemPrompt = getSystemPrompt(store?.settings, store?.vehicles);
       const res = await fetch("/api/chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -209,7 +273,7 @@ export default function ParkPilotChatbot() {
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 1000,
-          system: SYSTEM_PROMPT,
+          system: systemPrompt,
           messages: nextHistory.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
@@ -222,7 +286,7 @@ export default function ParkPilotChatbot() {
       
       if (data?.error?.type === "unconfigured") {
         console.warn("[Chatbot] Server has no Anthropic API key. Using local FAQ fallback responder.");
-        const fallbackReply = getLocalResponse(trimmed);
+        const fallbackReply = getLocalResponse(trimmed, store?.settings);
         setMessages((prev) => [...prev, { role: "assistant", content: fallbackReply }]);
       } else if (data?.error) {
         throw new Error(data.error.message || "Unknown proxy error.");
@@ -233,12 +297,12 @@ export default function ParkPilotChatbot() {
     } catch (err) {
       if (err.name === "AbortError") return;
       console.warn("[Chatbot] Using local fallback response. Error info:", err);
-      const fallbackReply = getLocalResponse(trimmed);
+      const fallbackReply = getLocalResponse(trimmed, store?.settings);
       setMessages((prev) => [...prev, { role: "assistant", content: fallbackReply }]);
     } finally {
       setLoading(false);
     }
-  }, [messages, loading]);
+  }, [messages, loading, store]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
