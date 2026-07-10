@@ -135,7 +135,7 @@ create table settings (
 );
 
 insert into settings (id, total_slots, slots_by_type, rates, upi_vpa, upi_payee_name, currency)
-values (1, 50, '{"standard":40,"ev":5,"disabled":5}', '{"standard":30,"ev":40,"disabled":20}', '', 'ParkPilot', 'INR');
+values (1, 50, '{"standard":40,"ev":5,"taxi":5}', '{"standard":30,"ev":40,"taxi":20}', '', 'ParkPilot', 'INR');
 
 -- Vehicles
 create table vehicles (
@@ -283,7 +283,7 @@ How it works:
 
 **Vehicles** — Full sortable table of all vehicle records with status badges (parked / completed). Includes a force-checkout button for vehicles that left without checking out.
 
-**Settings** — Configure total slot count, per-type slot allocation (Standard / EV / Disabled), hourly rates per type, UPI VPA and payee name, and a "wipe all data" button for resetting between deployments.
+**Settings** — Configure total slot count, per-type slot allocation (Standard / EV / Taxi), hourly rates per type, UPI VPA and payee name, and a "wipe all data" button for resetting between deployments.
 
 ---
 
@@ -335,6 +335,17 @@ Admin opens Dashboard
 The local engine covers **12 distinct scenarios** (capacity critical, demand surge, demand drop, high occupancy, EV-dominant, long stays, revenue efficiency, stable ops, and more) with randomised natural-language variants, so the card always shows a meaningful, non-generic summary — regardless of API availability.
 
 > No new database tables are created for this feature. All analytics are computed from the existing `vehicles`, `revenue_log`, and `settings` tables.
+
+---
+
+## AI Chatbot (ParkPilot Assistant)
+
+ParkPilot features a floating guest-facing assistant that helps users understand check-in/check-out flows, payment methods, and current rates/occupancy.
+
+### How the Chatbot works
+
+- **Dynamic Rates & Slots**: The chatbot's system prompt is constructed dynamically. Every query sent to the AI includes real-time pricing (hourly rate and minimum billable hours) and live slot availability (total capacity, standard, EV, and taxi spots) based on the database settings and currently parked vehicles.
+- **Offline / Local Fallback**: If the Gemini/OpenAI API is unconfigured or offline, the chatbot degrades gracefully to a rule-based matching responder (`getLocalResponse`). This local fallback dynamically parses settings so it still responds with the correct configured rates for Standard, EV, and Taxi spots.
 
 ---
 
@@ -413,7 +424,7 @@ OXLint is configured via `.oxlintrc.json`. It's significantly faster than ESLint
 **Degradation behaviour:**
 - Missing `VITE_SUPABASE_*` → App runs entirely in local mode using `localStorage`.
 - Missing `PLATERECOGNIZER_TOKEN` → Automatic plate detection shows a configuration error; manual entry still works.
-- Missing `GEMINI_API_KEY` and `OPENAI_API_KEY` → AI Operations Overview uses the built-in local analytics engine (87–92% confidence). AI chatbot falls back to offline keyword matching.
+- Missing `GEMINI_API_KEY` and `OPENAI_API_KEY` → AI Operations Overview uses the built-in local analytics engine (87–92% confidence). AI chatbot falls back to offline keyword matching (which dynamically parses settings to display the correct active rates).
 
 ---
 
